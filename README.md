@@ -36,7 +36,7 @@
   available chapters.
 - Supports various public domain Bible translations, including KJV
   (English), LSG (French), RVA (Spanish), ALB (Albanian), UKR
-  (Ukrainian), RUSV (Russian), LUTH1545 (German), ...
+  (Ukrainian), RUSV (Russian), LUTH1545 (German), UBG (Polish) ...
 - Prompts for a Bible chapter and plays the audio chapter from the
   [Zondervan King James Audio
   Bible](https://www.biblegateway.com/audio/dramatized/kjv/Gen.1).
@@ -163,6 +163,7 @@ The Bible version/translation to use when fetching verses and passages. The foll
 - `"UKR"` - Ukrainian Bible
 - `"RUSV"` - Russian Synodal Version
 - `"LUTH1545"` - Luther Bible 1545 (German)
+-  `"UBG"` - Updated Gdansk Bible (Polish)
 
 #### `bible-gateway-text-width`
 

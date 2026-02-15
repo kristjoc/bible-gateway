@@ -58,7 +58,7 @@
   "The Bible version, default KJV.
 Other supported versions, which are available in the Public Domain, are
 LSG in French, RVA in Spanish, ALB in Albanian, UKR in Ukrainian, RUSV
-in Russian, LUTH1545 in German and UBG in Polish (New Testament + Proverbs + Psalms, KJV for the rest of Old Testament)."
+in Russian, LUTH1545 in German and UBG in Polish (New Testament + Proverbs + Psalms)."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
@@ -229,24 +229,16 @@ but have everlasting life."
   "List of Bible books (Luther Bibel 1545 version) with their number of chapters.")
 
 (defconst bible-gateway-bible-books-ubg
-  '(("Genesis" . 50) ("Exodus" . 40) ("Leviticus" . 27) ("Numbers" . 36)
-    ("Deuteronomy" . 34) ("Joshua" . 24) ("Judges" . 21) ("Ruth" . 4)
-    ("1 Samuel" . 31) ("2 Samuel" . 24) ("1 Kings" . 22) ("2 Kings" . 25)
-    ("1 Chronicles" . 29) ("2 Chronicles" . 36) ("Ezra" . 10) ("Nehemiah" . 13)
-    ("Esther" . 10) ("Job" . 42) ("Ps" . 150) ("Prz" . 31)
-    ("Ecclesiastes" . 12) ("Song of Solomon" . 8) ("Isaiah" . 66) ("Jeremiah" . 52)
-    ("Lamentations" . 5) ("Ezekiel" . 48) ("Daniel" . 12) ("Hosea" . 14)
-    ("Joel" . 3) ("Amos" . 9) ("Obadiah" . 1) ("Jonah" . 4) ("Micah" . 7)
-    ("Nahum" . 3) ("Habakkuk" . 3) ("Zephaniah" . 3) ("Haggai" . 2)
-    ("Zechariah" . 14) ("Malachi" . 4) ("Mt" . 28) ("Mk" . 16)
-    ("Łk" . 24) ("J" . 21) ("Dz" . 28) ("Rz" . 16)
-    ("1 Kor" . 16) ("2 Kor" . 13) ("Gal" . 6)
-    ("Ef" . 6) ("Flp" . 4) ("Kol" . 4)
-    ("1 Tes" . 5) ("2 Tes" . 3) ("1 Tym" . 6)
-    ("2 Tym" . 4) ("Tyt" . 3) ("Flm" . 1) ("Hbr" . 13)
-    ("Jk" . 5) ("1 P" . 5) ("2 P" . 3) ("1 J" . 5)
-    ("2 J" . 1) ("3 J" . 1) ("Jud" . 1) ("Ap" . 22))
-  "List of Bible books (UBG + KJV version) with their number of chapters.")
+  '(("Psalmy" . 150) ("Księga Przysłów" . 31)
+    ("Ewangelia według św. Mateusza" . 28) ("Ewangelia według św. Marka" . 16)
+    ("Ewangelia według św. Łukasza" . 24) ("Ewangelia według św. Jana" . 21) ("Dzieje Apostolskie" . 28) ("List św. Pawła do Rzymian" . 16)
+    ("Pierwszy List św. Pawła do Koryntian" . 16) ("Drugi List św. Pawła do Koryntian" . 13) ("List św. Pawła do Galacjan" . 6)
+    ("List św. Pawła do Efezjan" . 6) ("List św. Pawła do Filipian" . 4) ("List św. Pawła do Kolosan" . 4)
+    ("Pierwszy List św. Pawła do Tesaloniczan" . 5) ("Drugi List św. Pawła do Tesaloniczan" . 3) ("Pierwszy List św. Pawła do Tymoteusza" . 6)
+    ("Drugi List św. Pawła do Tymoteusza" . 4) ("List św. Pawła do Tytusa" . 3) ("List św. Pawła do Filemona" . 1) ("List do Hebrajczyków" . 13)
+    ("List św. Jakuba" . 5) ("Pierwszy List św. Piotra" . 5) ("Drugi List św. Piotra" . 3) ("Pierwszy List św. Jana" . 5)
+    ("Drugi List św. Jana" . 1) ("Trzeci List św. Jana" . 1) ("List św. Judy" . 1) ("Objawienie św. Jana" . 22))
+  "List of Bible books (UBG) with their number of chapters.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                           Caching Mechanism                                ;
@@ -618,8 +610,13 @@ If neither, prompt for both."
                            (bible-gateway--prompt-chapter-verse chosen-book)))
          (search-string (if passage-supplied
                             (concat chosen-book
-				    (replace-regexp-in-string " " "" chosen-passage))
-                          (replace-regexp-in-string " " "" chosen-passage)))
+                                    (if (string= bible-gateway-bible-version "UBG")  ;; UBG books have a lot of spaces - essential for API
+                                        chosen-passage
+				      (replace-regexp-in-string " " "" chosen-passage)))
+                        (if (string= bible-gateway-bible-version "UBG")
+                              chosen-passage
+                          (replace-regexp-in-string " " "" chosen-passage))))
+
          (url (concat "https://www.biblegateway.com/passage/?search="
 		      (url-encode-url search-string)
 		      "&version=" (url-encode-url bible-gateway-bible-version))))
