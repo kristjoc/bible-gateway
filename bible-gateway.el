@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.6.6
+;; Package-Version: 1.6.7
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -605,15 +605,16 @@ Returns a single formatted string without verse numbers nor reference."
         ;;        (passage (car (last parts)))
         ;;        (book (string-join (butlast parts) " ")))
 
-	(let* ((split-pos (string-match "\\b[0-9]+:[0-9]" citation))
+	(let* ((split-pos (string-match "\\b[0-9]+:\\s-*[0-9]" citation))
 	       (book    (string-trim (substring citation 0 split-pos)))
-	       (passage (string-trim (substring citation split-pos))))
+	       (passage (replace-regexp-in-string ":\\s-+" ":"
+						  (string-trim (substring
+								citation
+								split-pos)))))
           ;; 3. Capture passage output.
           (with-temp-buffer
 	    (let ((bible-gateway-include-ref t))
-              ;; (bible-gateway-get-passage book passage))
 	      (bible-gateway-get-passage (bible-gateway--localize-book book) passage))
-            ;; (let* ((raw (buffer-string))
 	    (let* ((raw (buffer-string))
                    ;; Remove any success/status lines.
                    (raw (replace-regexp-in-string
