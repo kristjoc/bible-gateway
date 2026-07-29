@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.6.7
+;; Package-Version: 1.6.8
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -813,16 +813,17 @@ If neither, prompt for both."
   (let* ((book-supplied (and book (not (string-empty-p book))))
          (passage-supplied (and passage (not (string-empty-p passage))))
          (chosen-book (if book-supplied book (bible-gateway--prompt-book)))
+         (localized-book (bible-gateway--localize-book chosen-book))
          (chosen-passage (if passage-supplied
                              passage
                            (bible-gateway--prompt-chapter-verse chosen-book)))
-         ;; `chosen-passage' is "BOOK PASSAGE" when built by
+         ;; `chosen-passage' is "LOCALIZED-BOOK PASSAGE" when built by
          ;; `bible-gateway--prompt-chapter-verse', and just "PASSAGE" when
          ;; supplied programmatically.  Normalize both into a single
-         ;; "BOOK PASSAGE" form; URL encoding handles the space.
+         ;; "LOCALIZED-BOOK PASSAGE" form; URL encoding handles the space.
          (search-string (if passage-supplied
                             (format "%s %s"
-                                    (string-trim chosen-book)
+                                    (string-trim localized-book)
                                     (string-trim chosen-passage))
                           (string-trim chosen-passage)))
          (url (concat "https://www.biblegateway.com/passage/?search="
@@ -836,19 +837,11 @@ If neither, prompt for both."
             (decode-coding-region (point-min) (point-max) 'utf-8)
             (goto-char (point-min))
 
-            ;; First get the title if required
-            (let ((title nil))
-              (when bible-gateway-include-ref
-                (goto-char (point-min))
-                (when (search-forward "<meta name=\"twitter:title\" content=\"" nil t)
-                  (let ((start (point))
-                        (end (search-forward "\"")))
-                    ;; Decode the title here
-                    (setq title
-                          (decode-coding-string
-                           (encode-coding-string
-                            (buffer-substring-no-properties start (1- end)) 'utf-8)
-                           'utf-8)))))
+            ;; Build the title locally from what was actually requested,
+            ;; instead of trusting BibleGateway's (sometimes truncated)
+            ;; twitter:title meta tag.
+            (let ((title (when bible-gateway-include-ref
+                           (format "%s (%s)" search-string bible-gateway-bible-version))))
 
               ;; Then get the verses
               (goto-char (point-min))
@@ -907,7 +900,7 @@ If neither, prompt for both."
                           (insert title "\n\n"))
                         (insert (string-join (reverse verses) "\n"))))
                   (message
-                   (concat "Sorry, we didn’t find any results for your search.\n"
+                   (concat "Sorry, we didn't find any results for your search.\n"
                            "Please double-check that the chapter and verse numbers are valid.")))))))
       (error
        (message "Error while fetching the passage: %s" (error-message-string err))))))
@@ -927,8 +920,8 @@ passages.  BOOK and PASSAGE are handled identically to
   (interactive)
   ;; Hide the passage window if it's already visible, so it doesn't
   ;; show during prompting.
-  (when-let ((existing-buf (get-buffer bible-gateway-passage-buffer-name))
-             (existing-win (get-buffer-window existing-buf)))
+  (when-let* ((existing-buf (get-buffer bible-gateway-passage-buffer-name))
+              (existing-win (get-buffer-window existing-buf)))
     (when (window-deletable-p existing-win)
       (delete-window existing-win)))
   ;; Collect all user input FIRST, before touching any buffers/windows.
@@ -937,15 +930,16 @@ passages.  BOOK and PASSAGE are handled identically to
          (chosen-book (if book-supplied book (bible-gateway--prompt-book)))
          (chosen-passage (if passage-supplied
                              passage
-                           (let* ((raw (bible-gateway--prompt-chapter-verse chosen-book))
-                                  (trimmed (string-trim (substring raw (length chosen-book)))))
+                           (let* ((localized-book (bible-gateway--localize-book chosen-book))
+                                  (raw (bible-gateway--prompt-chapter-verse chosen-book))
+                                  (trimmed (string-trim (substring raw (length localized-book)))))
                              (if (string-empty-p trimmed) "1" trimmed)))))
     ;; All prompting is done. Now create/display the buffer.
     (message "Fetching %s %s..." chosen-book chosen-passage)
     (let ((buf (get-buffer-create bible-gateway-passage-buffer-name))
           (passage-start nil))
       (display-buffer buf '(display-buffer-full-frame))
-      (when-let ((win (get-buffer-window buf)))
+      (when-let* ((win (get-buffer-window buf)))
         (select-window win)
         (with-current-buffer buf
           (let ((inhibit-read-only t))
@@ -1661,7 +1655,7 @@ the book.  Returns nil if REF cannot be parsed."
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (insert (format "Reading Plan — %s\n" date))
+        (insert (format "Bible Reading Plan — %s\n" date))
         (insert (make-string bible-gateway-text-width ?=) "\n\n")
         (dolist (ref references)
           (let ((parsed (bible-gateway--parse-reference ref)))
@@ -1670,7 +1664,7 @@ the book.  Returns nil if REF cannot be parsed."
               (let ((book (bible-gateway--translate-csv-book (car parsed)))
                     (chap (cdr parsed))
                     (passage-start (point)))
-                (insert (format "── %s ──\n\n" ref))
+		(insert (format "─── %s (%s) ───\n\n" ref bible-gateway-bible-version))
                 (let ((bible-gateway-include-ref t))
                   (bible-gateway-get-passage book chap))
                 ;; Tag each verse so n/p navigation works.
