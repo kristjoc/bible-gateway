@@ -44,6 +44,8 @@
   results in a buffer with clickable references and pagination.
 - Follows a daily Bible reading plan from a CSV file, opening all of today's
   passages in a single buffer.
+- Helps you memorise a Bible verse using a touch-typing practice mode, with live
+  color-coded feedback as you type.
 - 
 
 ------
@@ -77,6 +79,11 @@ Not available anymore due to Copyright.
 <img
 src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-search.gif?raw=true">
 
+#### Memorise Bible verses with touch-typing
+
+<img
+src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-memorise.gif?raw=true">
+
 
 ------
 
@@ -103,8 +110,8 @@ src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gatew
 bible-gateway is a simple Emacs package that fetches content from
 [BibleGateway](https://www.biblegateway.com/). It can fetch the verse of the
 day, insert any Bible verse, passage, or chapter(s) at point or in a dedicated
-buffer, play audio chapters in a browser tab, and search for keywords — all from
-within Emacs.
+buffer, play audio chapters in a browser tab, search for keywords, and help you
+memorise Bible verses — all from within Emacs.
 
 ### Disclaimer
 
@@ -317,6 +324,22 @@ the same English CSV and the readings will be fetched in French. The CSV
 selects *which* passages; `bible-gateway-bible-version` selects *what language*
 they're returned in.
 
+#### `bible-gateway-memorise-beep-on-error`
+
+**Type:** boolean
+**Default:** `nil`
+
+When non-nil, `bible-gateway-memorise` beeps/flashes every time there is a
+mistake anywhere in the text you've typed so far. It keeps signaling on every
+keystroke until you go back and fix the error. Off by default for a quieter
+experience; enable it if you want a stronger nudge to correct mistakes
+immediately rather than typing on.
+
+**Example:**
+```commonlisp
+(setq bible-gateway-memorise-beep-on-error t)
+```
+
 
 ### `*scratch*` buffer message
 
@@ -442,9 +465,10 @@ Tab feature for Bible Audio.
 ### Search for a keyword in BibleGateway
 
 To search for a keyword in BibleGateway and display the results in Emacs, invoke
-`M-x bible-gateway-search`, enter the desired keyword, and hit `RET`. The search
-results will be displayed in a new Emacs buffer with clickable references and
-pagination links at the bottom of the buffer.
+`M-x bible-gateway-search` (or open the transient menu with `M-x bible-gateway`
+and press `s`, enter the desired keyword, and hit `RET`. The search results will
+be displayed in a new Emacs buffer with clickable references and pagination
+links at the bottom of the buffer.
 
 Click or press RET on a reference to view the passage in context. Press `n/p` or
 `j/k` to navigate between results, `N/P` to navigate between pages, and `q` to close the
@@ -461,7 +485,33 @@ and press `p`). All of today's passages are fetched and displayed in a single
 `j/k` between verses as in the regular passage buffer.
 
 If today's date is not present in the CSV (the plan hasn't started yet, or has
-already ended), Emacs displays a message and no buffer is opened.
+already ended), Emacs displays a message and no buffer is opened.  
+
+### Memorise Bible verses with touch-typing
+
+To practice touch-typing while memorising Bible verses, invoke `M-x
+bible-gateway-memorise` (or open the transient menu with `M-x bible-gateway` and
+press `m`), and select the book and passage as usual. The frame splits into two
+buffers: the target verse on top (read-only) and a typing area below where your
+cursor starts. As you type, each character is colored green (correct) or red
+(incorrect) live in the verse buffer above, so you get immediate feedback on
+your accuracy.
+
+The session only completes once every character has been typed correctly — typos
+alone won't trigger a "Amen!" message; keep typing/correcting until the whole
+passage matches. Once finished, you'll see your typing speed (WPM) and elapsed
+time.
+
+Key bindings in the typing buffer:
+
+| Key       | Action                                                                           |
+|-----------|----------------------------------------------------------------------------------|
+| `C-c C-c` | Finish the session and close both buffers/windows.                               |
+| `C-c C-r` | Restart the same verse from scratch.                                             |
+| `C-c RET` | Prompt for a new book/passage and start a fresh verse, reusing the same buffers. |
+
+See `bible-gateway-memorise-beep-on-error` below if you'd like an audible/visual
+nudge on every mistake.
 
 And that's it! God bless you! Have a great day! :-)
 

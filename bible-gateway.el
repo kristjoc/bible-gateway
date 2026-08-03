@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.6.8
+;; Package-Version: 1.7.0
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 ;; - Search the Bible by keyword and display results in a dedicated buffer with
 ;;   clickable references and pagination
 ;; - Follow a daily reading plan from a CSV file
+;; - Memorise Bible verses with touch-typing
 ;;
 ;; Usage:
 ;;
@@ -58,6 +59,9 @@
 ;; M-x `bible-gateway-read-today' fetches all of today's passages from
 ;; the active reading plan (set via `bible-gateway-reading-plan') and
 ;; displays them in a single buffer.
+;;
+;; M-x `bible-gateway-memorise' helps you memorise a Bible verse using a
+;; touch-typing practice mode, with live color-coded feedback as you type.
 
 ;;; Code:
 
@@ -1665,8 +1669,23 @@ the book.  Returns nil if REF cannot be parsed."
                     (chap (cdr parsed))
                     (passage-start (point)))
 		(insert (format "─── %s (%s) ───\n\n" ref bible-gateway-bible-version))
-                (let ((bible-gateway-include-ref t))
+                (let ((bible-gateway-include-ref nil))
                   (bible-gateway-get-passage book chap))
+		;; Insert a blank line before each new chapter within a
+		;; multi-chapter range (a new chapter always restarts
+		;; verse numbering at "1.").
+		(save-excursion
+		  (goto-char passage-start)
+		  (let ((first t))
+		    (while (re-search-forward "^1\\.\\s-" nil t)
+		      (let ((mb (match-beginning 0))
+			    (me (match-end 0)))
+			(if first
+			    (setq first nil)
+			  (goto-char mb)
+			  (insert "\n")
+			  (setq me (1+ me)))
+			(goto-char me)))))
                 ;; Tag each verse so n/p navigation works.
                 (save-excursion
                   (goto-char passage-start)
@@ -1706,7 +1725,244 @@ References are concatenated with headers separating each passage."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                     Package Section VI - Transient Menu                    ;
+;;                   Package Section VI - Memorize and Touch-Type             ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defface bible-gateway-memorise-correct-face
+  '((t :foreground "green3"))
+  "Face for correctly typed characters.")
+
+(defface bible-gateway-memorise-incorrect-face
+  '((t :foreground "red" :underline t))
+  "Face for incorrectly typed characters.")
+
+(defface bible-gateway-memorise-pending-face
+  '((t :inherit shadow))
+  "Face for characters not yet typed.")
+
+(defvar-local bible-gateway-memorise--target nil
+  "Target verse text (no reference, no verse numbers) for the typing buffer.")
+
+(defvar-local bible-gateway-memorise--verse-buffer nil
+  "The buffer displaying the target verse.")
+
+(defvar-local bible-gateway-memorise--start-time nil)
+
+(defvar-local bible-gateway-memorise--typing-start nil
+  "Buffer position in the typing buffer where user input begins.")
+
+(defvar-local bible-gateway-memorise--verse-text-start nil
+  "Buffer position (in both the verse buffer and typing buffer) marking
+where the verse text itself starts, i.e. after the reference header.")
+
+(defcustom bible-gateway-memorise-beep-on-error nil
+  "If non-nil, beep (and flash the mode-line) whenever there is a
+mistake anywhere in the currently typed text."
+  :type 'boolean)
+
+
+(defun bible-gateway-memorise--fetch-text (book passage)
+  "Fetch BOOK PASSAGE text via `bible-gateway-get-passage'.
+PASSAGE may already contain the localized book name prefix (as returned
+by `bible-gateway--prompt-chapter-verse'); strip it before calling
+`bible-gateway-get-passage', which re-adds the book name itself.
+Returns a cons (REFERENCE . VERSE-TEXT), where REFERENCE is the
+\"Book C:V (VERSION)\" title line and VERSE-TEXT is the clean,
+continuous passage with verse numbers and line-wrapping stripped."
+  (let* ((localized-book (bible-gateway--localize-book book))
+         (bare-passage
+          (if (string-prefix-p localized-book passage)
+              (string-trim (substring passage (length localized-book)))
+            passage)))
+    (with-temp-buffer
+      (let ((bible-gateway-include-ref t))
+        (bible-gateway-get-passage book bare-passage))
+      (let* ((full (buffer-string))
+             (nl-pos (string-match "\n" full))
+             (reference (if nl-pos (substring full 0 nl-pos) ""))
+             (raw (if nl-pos (substring full nl-pos) full))
+             ;; Strip leading verse numbers like "8.  " at the start of a line.
+             (no-numbers (replace-regexp-in-string
+                          "^\\s-*[0-9]+\\.\\s-*" "" raw))
+             ;; Collapse newlines/whitespace (from wrapping + verse breaks)
+             ;; into single spaces so it reads as one continuous passage.
+             (joined (replace-regexp-in-string "\\s-+" " " no-numbers))
+             (trimmed (string-trim joined)))
+        (cons reference trimmed)))))
+
+(defun bible-gateway-memorise--disable-completion ()
+  "Turn off every form of in-buffer completion/autocomplete, locally.
+Covers corfu, company, built-in completion-at-point, and dabbrev."
+  ;; Corfu (if installed/loaded)
+  (when (bound-and-true-p corfu-mode) (corfu-mode -1))
+  (when (fboundp 'corfu-mode) (setq-local corfu-auto nil))
+  ;; Company (if installed/loaded)
+  (when (bound-and-true-p company-mode) (company-mode -1))
+  ;; Built-in completion-at-point / completion-preview
+  (when (bound-and-true-p completion-preview-mode) (completion-preview-mode -1))
+  (setq-local completion-at-point-functions nil)
+  ;; Belt-and-suspenders: make TAB never trigger a completion command
+  ;; even if something re-adds itself via a major/minor mode hook.
+  (setq-local tab-always-indent t)
+  ;; Dabbrev / hippie-expand won't pop up on their own (they're
+  ;; explicit commands, not idle popups), but neutralize the binding
+  ;; anyway so a stray M-/ or TAB-based dabbrev doesn't do anything.
+  (local-set-key (kbd "M-/") #'ignore))
+
+(defun bible-gateway-memorise--update-highlight ()
+  "Recolor the verse buffer based on what has been typed so far."
+  (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
+	 (typed (buffer-substring-no-properties start (point-max)))
+         (target bible-gateway-memorise--target)
+         (verse-buf bible-gateway-memorise--verse-buffer)
+         (verse-start bible-gateway-memorise--verse-text-start)
+	 (has-error nil))
+    (with-current-buffer verse-buf
+      (let ((inhibit-read-only t))
+        (remove-overlays (point-min) (point-max))
+        (dotimes (i (length target))
+          (let* ((typed-char (and (< i (length typed)) (aref typed i)))
+                 (target-char (aref target i))
+                 (face (cond
+                        ((null typed-char) 'bible-gateway-memorise-pending-face)
+                        ((eq typed-char target-char) 'bible-gateway-memorise-correct-face)
+                        (t (setq has-error t) 'bible-gateway-memorise-incorrect-face)))
+                 (ov (make-overlay (+ verse-start i) (+ verse-start i 1))))
+            (overlay-put ov 'face face)))
+        (goto-char (min (+ verse-start (length typed)) (point-max)))))
+    (when (and has-error bible-gateway-memorise-beep-on-error)
+      (bible-gateway-memorise--alert))))
+
+(defun bible-gateway-memorise--alert ()
+  "Beep and briefly flash the mode-line to signal a typing mistake."
+  (ding)
+  (let ((buf (current-buffer)))
+    (with-current-buffer buf
+      (let ((cookie (face-remap-add-relative 'mode-line '(:background "red"))))
+	(run-with-timer 0.15 nil
+			(lambda ()
+			  (when (buffer-live-p buf)
+			    (with-current-buffer buf
+			      (face-remap-remove-relative cookie)
+			      (force-mode-line-update)))))
+	(force-mode-line-update)))))
+
+(defun bible-gateway-memorise--all-correct-p ()
+  "Return non-nil if everything typed so far matches the target exactly,
+and the full target has been typed (no more, no less)."
+  (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
+	 (typed (buffer-substring-no-properties start (point-max)))
+	 (target bible-gateway-memorise--target))
+    (and (= (length typed) (length target))
+	 (string= typed target))))
+
+(defun bible-gateway-memorise--after-change (beg _end _len)
+  "Guard against edits before the typing start marker, then update highlight."
+  (condition-case err
+      (progn
+        (when (< beg bible-gateway-memorise--typing-start)
+          (goto-char (max (point) bible-gateway-memorise--typing-start)))
+        (bible-gateway-memorise--update-highlight)
+	(when (bible-gateway-memorise--all-correct-p)
+          (let* ((elapsed (float-time (time-subtract (current-time)
+                                                     bible-gateway-memorise--start-time)))
+                 (words (/ (length bible-gateway-memorise--target) 5.0))
+                 (wpm (/ words (/ elapsed 60.0))))
+            (message "Amen! %.1f WPM in %.1fs.\nC-c C-r to keep practicing, C-c RET for a
+new passage, or C-c C-c to quit session."
+                     wpm elapsed))))
+    (error (message "bible-gateway-memorise error: %s" (error-message-string err)))))
+
+(defvar bible-gateway-memorise-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") #'bible-gateway-memorise-finish)
+    (define-key map (kbd "C-c C-r") #'bible-gateway-memorise-restart)
+    (define-key map (kbd "C-c RET") #'bible-gateway-memorise-next)
+    map))
+
+(define-minor-mode bible-gateway-memorise-mode
+  "Minor mode for the touch-typing memorisation typing buffer."
+  :lighter " Memorise"
+  :keymap bible-gateway-memorise-mode-map)
+
+(defun bible-gateway-memorise-finish ()
+  "Finish the current memorisation session and close its windows/buffers."
+  (interactive)
+  (let ((verse-buf bible-gateway-memorise--verse-buffer))
+    (kill-buffer)
+    (when (buffer-live-p verse-buf) (kill-buffer verse-buf)))
+  (delete-other-windows))
+
+(defun bible-gateway-memorise-restart ()
+  "Clear typed input and start over on the same verse."
+  (interactive)
+  (let ((inhibit-read-only t))
+    (delete-region bible-gateway-memorise--typing-start (point-max)))
+  (setq bible-gateway-memorise--start-time (current-time))
+  (with-current-buffer bible-gateway-memorise--verse-buffer
+    (remove-overlays (point-min) (point-max))))
+
+(defun bible-gateway-memorise-next ()
+  "Prompt for a new book/passage and start a fresh memorisation session,
+reusing the existing verse and typing buffers/windows."
+  (interactive)
+  (bible-gateway-memorise))
+
+;;;###autoload
+(defun bible-gateway-memorise (&optional book passage)
+  "Practice touch-typing while memorising a Bible verse.
+Prompts for BOOK and PASSAGE like `bible-gateway-get-passage', then
+splits the window: the verse to memorise on top, a typing area below."
+  (interactive)
+  (let* ((chosen-book (or book (bible-gateway--prompt-book)))
+         (chosen-passage (or passage (bible-gateway--prompt-chapter-verse chosen-book)))
+         (fetched (bible-gateway-memorise--fetch-text chosen-book chosen-passage))
+         (reference (car fetched))
+         (verse-text (cdr fetched))
+         (verse-buf (get-buffer-create "*Bible Memorise: Verse*"))
+         (typing-buf (get-buffer-create "*Bible Memorise: Typing*"))
+         (verse-text-start nil))   ; shared across both buffers
+    (when (string-empty-p verse-text)
+      (user-error "Could not fetch passage text"))
+    (delete-other-windows)
+    ;; --- Verse buffer (read-only) ---
+    (with-current-buffer verse-buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert reference "\n\n")
+        (setq verse-text-start (point)
+              bible-gateway-memorise--verse-text-start verse-text-start)
+        (insert verse-text)
+        (goto-char (point-min)))
+      (setq buffer-read-only t))
+    ;; --- Typing buffer (editable) ---
+    (with-current-buffer typing-buf
+      ;; Remove any hook left over from a previous session in this buffer
+      ;; BEFORE erasing/inserting, so stale state doesn't get read mid-edit.
+      (remove-hook 'after-change-functions #'bible-gateway-memorise--after-change t)
+      (let ((inhibit-read-only t))
+        (erase-buffer))
+      (setq buffer-read-only nil)
+      (fundamental-mode)
+      (bible-gateway-memorise--disable-completion)
+      (insert reference "\n\n")
+      (setq bible-gateway-memorise--typing-start (point-max))
+      (setq bible-gateway-memorise--target verse-text
+            bible-gateway-memorise--verse-buffer verse-buf
+            bible-gateway-memorise--verse-text-start verse-text-start
+            bible-gateway-memorise--start-time (current-time))
+      (goto-char (point-max))
+      (bible-gateway-memorise-mode 1)
+      (add-hook 'after-change-functions #'bible-gateway-memorise--after-change nil t))
+    ;; --- Split window ---
+    (set-window-buffer (selected-window) verse-buf)
+    (select-window (split-window-below))
+    (set-window-buffer (selected-window) typing-buf)
+    (select-window (get-buffer-window typing-buf))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                     Package Section VII - Transient Menu                   ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (require 'transient)
@@ -1735,7 +1991,8 @@ References are concatenated with headers separating each passage."
    ("v" "Verse of the day" bible-gateway-show-verse)
    ("i" "Insert Bible passage" bible-gateway-get-passage)
    ("r" "Read Bible passage" bible-gateway-read-passage)
-   ("p" "Today's reading" bible-gateway-read-today)]
+   ("p" "Today's reading" bible-gateway-read-today)
+   ("m" "Memorise Bible verses" bible-gateway-memorise)]
   ["Audio"
    ("l" "Listen to chapter (KJV Dramatized)" bible-gateway-listen-passage)]
   ["Search"
