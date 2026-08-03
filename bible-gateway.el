@@ -24,7 +24,7 @@
 ;;; Commentary:
 
 ;; bible-gateway is a simple package that fetches content from
-;; [BibleGateway.com](http://BibleGateway.com). It can:
+;; [BibleGateway.com](https://www.biblegateway.com). It can:
 ;;
 ;; - Fetch and display the Bible verse of the day
 ;; - Insert Bible passages/chapters at point or in a dedicated buffer
@@ -32,35 +32,34 @@
 ;; - Search the Bible by keyword and display results in a dedicated buffer with
 ;;   clickable references and pagination
 ;; - Follow a daily reading plan from a CSV file
-;; - Memorise Bible verses with touch-typing
+;; - Help you memorise Bible verses using touch-typing
 ;;
 ;; Usage:
 ;;
-;; A transient menu (M-x `bible-gateway') gives access to all the
-;; commands above.
+;; A transient menu (M-x `bible-gateway') gives access to all the commands
+;; below.
 ;;
-;; `bible-gateway-get-verse' fetches the verse of the day for use as
-;; an emacs-dashboard footer or a scratch buffer message.
+;; `bible-gateway-get-verse' fetches the verse of the day for use as an
+;; emacs-dashboard footer or a scratch buffer message.
 ;;
-;; M-x `bible-gateway-get-passage' fetches a Bible passage and inserts
-;; it at point. It can be called both interactively from
-;; \\[execute-extended-command] or programmatically with the book name
-;; and verse(s) as arguments.
+;; M-x `bible-gateway-get-passage' fetches a Bible passage and inserts it at
+;; point. It can be called both interactively from \\[execute-extended-command]
+;; or programmatically with the book name and verse(s) as arguments.
 ;;
-;; M-x `bible-gateway-read-passage' works like `bible-gateway-get-passage'
-;; but displays the passage in a dedicated buffer in `text-mode'.
+;; M-x `bible-gateway-read-passage' works like `bible-gateway-get-passage' but
+;; displays the passage in a dedicated buffer in `text-mode'.
 ;;
-;; M-x `bible-gateway-listen-passage' plays a Bible chapter from KJV
-;; Zondervan Audio in the browser.
+;; M-x `bible-gateway-listen-passage' plays a Bible chapter from KJV Zondervan
+;; Audio in the browser.
 ;;
-;; M-x `bible-gateway-search' prompts for a search query, fetches results
-;; from BibleGateway, and displays them in a dedicated buffer.
+;; M-x `bible-gateway-search' prompts for a search query, fetches results from
+;; BibleGateway, and displays them in a dedicated buffer.
 ;;
-;; M-x `bible-gateway-read-today' fetches all of today's passages from
-;; the active reading plan (set via `bible-gateway-reading-plan') and
-;; displays them in a single buffer.
+;; M-x `bible-gateway-read-today' fetches all of today's passages from the
+;; active reading plan (set via `bible-gateway-reading-plan') and displays them
+;; in a single buffer.
 ;;
-;; M-x `bible-gateway-memorise' helps you memorise a Bible verse using a
+;; M-x `bible-gateway-memorise' helps you memorise Bible verses using a
 ;; touch-typing practice mode, with live color-coded feedback as you type.
 
 ;;; Code:
@@ -378,9 +377,10 @@ The query to BibleGateway is still sent using the localized book name."
 
 (defun bible-gateway--localize-book (display-name)
   "Return the localized book name for DISPLAY-NAME.
-If `bible-gateway-use-english-book-names' is nil, DISPLAY-NAME is already
-localized and is returned as-is.  Otherwise, DISPLAY-NAME is a KJV name and
-is mapped positionally to the localized equivalent in the current version."
+If `bible-gateway-use-english-book-names' is nil, DISPLAY-NAME is
+already localized and is returned as-is. Otherwise, DISPLAY-NAME is a
+KJV name and is mapped positionally to the localized equivalent in the
+current version."
   (if (not bible-gateway-use-english-book-names)
       display-name
     (let* ((kjv-names (mapcar #'car bible-gateway-bible-books-kjv))
@@ -416,7 +416,7 @@ Use `customize-variable' to persist the change across sessions."
 
 (defvar bible-gateway-cache-dir
   (locate-user-emacs-file ".cache/bible-gateway/")
-  "Directory where bible-gateway cache file is stored.")
+  "Directory where `bible-gateway' cache file is stored.")
 
 (defvar bible-gateway-cache-file
   (expand-file-name "bible-gateway-votd" bible-gateway-cache-dir)
@@ -683,8 +683,8 @@ Returns a single formatted string without verse numbers nor reference."
 ;;;###autoload
 (defun bible-gateway-get-verse ()
   "Get the verse of the day.
-Checks the cache first. If the cache is from today AND the stored
-Bible version matches `bible-gateway-bible-version', returns the cached
+Checks the cache first. If the cache is from today AND the stored Bible
+version matches `bible-gateway-bible-version', returns the cached
 string. Otherwise, fetches the verse from BibleGateway, updates the
 cache ONLY if successful, and returns the verse."
   (let* ((today (format-time-string "%Y-%m-%d"))
@@ -753,9 +753,10 @@ later localized by `bible-gateway--localize-book' before querying."
 
 (defun bible-gateway--prompt-chapter-verse (display-book)
   "Prompt for a chapter/verse for DISPLAY-BOOK.
-DISPLAY-BOOK may be a KJV name (when `bible-gateway-use-english-book-names'
-is non-nil) or an already-localized name.  Returns a string of the form
-\"LOCALIZED-BOOK CHAPTER[:VERSE]\" ready to be sent to BibleGateway."
+DISPLAY-BOOK may be a KJV name (when
+`bible-gateway-use-english-book-names' is non-nil) or an
+already-localized name. Returns a string of the form \"LOCALIZED-BOOK
+CHAPTER[:VERSE]\" ready to be sent to BibleGateway."
   (let* ((localized-book (bible-gateway--localize-book display-book))
          (books-list (bible-gateway--version-books))
          (max-chapters (cdr (assoc localized-book books-list))))
@@ -809,10 +810,10 @@ Handling special cases like small-caps LORD or JESUS and UTF-8 encoding."
 
 ;;;###autoload
 (defun bible-gateway-get-passage (&optional book passage)
-  "Fetch a Bible passage from https://biblegateway.com/.
-If BOOK and PASSAGE are provided, use them directly.
-If only BOOK is provided, prompt for passage only. TODO: Validate BOOK string.
-If neither, prompt for both."
+  "Fetch a Bible passage from https://www.biblegateway.com/.
+If BOOK and PASSAGE are provided, use them directly. If only BOOK is
+provided, prompt for passage only. TODO: Validate BOOK string. If
+neither, prompt for both."
   (interactive)
   (let* ((book-supplied (and book (not (string-empty-p book))))
          (passage-supplied (and passage (not (string-empty-p passage))))
@@ -915,11 +916,11 @@ If neither, prompt for both."
 ;;;###autoload
 (defun bible-gateway-read-passage (&optional book passage)
   "Fetch a Bible passage and append it to the *Bible Passage* buffer.
-Like `bible-gateway-get-passage', but instead of inserting at point,
-the passage is appended to a dedicated read-only buffer in
-`bible-gateway-passage-mode'.  Each verse is tagged so that \\`n' and
-\\`p' highlight one verse at a time.  Subsequent calls accumulate
-passages.  BOOK and PASSAGE are handled identically to
+Like `bible-gateway-get-passage', but instead of inserting at point, the
+passage is appended to a dedicated read-only buffer in
+`bible-gateway-passage-mode'. Each verse is tagged so that \\`n' and
+\\`p' highlight one verse at a time. Subsequent calls accumulate
+passages. BOOK and PASSAGE are handled identically to
 `bible-gateway-get-passage'."
   (interactive)
   ;; Hide the passage window if it's already visible, so it doesn't
@@ -1104,9 +1105,9 @@ Optional START is the result offset for pagination (default 0)."
 
 (defun bible-gateway--parse-search-results (keyword &optional start)
   "Fetch and parse BibleGateway search results for KEYWORD.
-Optional START is the result offset for pagination.
-Returns a plist with keys :count, :keyword, :start, and :results,
-where :results is a list of (ref . text) cons cells."
+Optional START is the result offset for pagination. Returns a plist with
+keys :count, :keyword, :start, and :results, where :results is a list
+of (ref . text) cons cells."
   (let ((url (bible-gateway--build-search-url keyword start))
 	(count 0)
 	(results '()))
@@ -1634,10 +1635,10 @@ DATE is a string in YYYY-MM-DD form.  Returns nil if not found."
 (defun bible-gateway--parse-reference (ref)
   "Parse REF into a (BOOK . PASSAGE) cons.
 
-REF is a single Bible reference such as \"Gen 1\", \"Mat 9-10\",
-\"1 Sa 3:16\", or \"Song of Solomon 2:1-7\".  Returns a cons of
-(BOOK . PASSAGE) where PASSAGE is the chapter/verse portion (may
-contain colons and hyphens) and BOOK is everything before it.
+REF is a single Bible reference such as \"Gen 1\", \"Mat 9-10\", \"1 Sa
+3:16\", or \"Song of Solomon 2:1-7\". Returns a cons of \(BOOK .
+PASSAGE\) where PASSAGE is the chapter/verse portion (may contain colons
+and hyphens) and BOOK is everything before it.
 
 The parser walks back from the end: the trailing run of digits,
 colons, hyphens, and commas is the passage; everything before is
@@ -1752,12 +1753,14 @@ References are concatenated with headers separating each passage."
   "Buffer position in the typing buffer where user input begins.")
 
 (defvar-local bible-gateway-memorise--verse-text-start nil
-  "Buffer position (in both the verse buffer and typing buffer) marking
-where the verse text itself starts, i.e. after the reference header.")
+  "Position where the verse text starts, after the reference header.
+This is set as a buffer-local variable in both the verse buffer and the
+typing buffer.")
 
 (defcustom bible-gateway-memorise-beep-on-error nil
-  "If non-nil, beep (and flash the mode-line) whenever there is a
-mistake anywhere in the currently typed text."
+  "If non-nil, beep or flash on a typing mistake.
+Triggers whenever there is a mismatch anywhere in the currently typed
+text, and keeps triggering on further edits until it is corrected."
   :type 'boolean)
 
 
@@ -1799,7 +1802,12 @@ Covers corfu, company, built-in completion-at-point, and dabbrev."
   ;; Company (if installed/loaded)
   (when (bound-and-true-p company-mode) (company-mode -1))
   ;; Built-in completion-at-point / completion-preview
-  (when (bound-and-true-p completion-preview-mode) (completion-preview-mode -1))
+  ;; Referenced via `intern' (not the literal symbol) so that package
+  ;; linters targeting Emacs 29 don't flag a hard dependency on
+  ;; Emacs 30's `completion-preview-mode', which may not exist here.
+  (let ((preview-mode (intern-soft "completion-preview-mode")))
+    (when (and preview-mode (boundp preview-mode) (symbol-value preview-mode))
+      (funcall preview-mode -1)))
   (setq-local completion-at-point-functions nil)
   ;; Belt-and-suspenders: make TAB never trigger a completion command
   ;; even if something re-adds itself via a major/minor mode hook.
@@ -1848,8 +1856,9 @@ Covers corfu, company, built-in completion-at-point, and dabbrev."
 	(force-mode-line-update)))))
 
 (defun bible-gateway-memorise--all-correct-p ()
-  "Return non-nil if everything typed so far matches the target exactly,
-and the full target has been typed (no more, no less)."
+  "Return non-nil if the typed text exactly matches the target.
+Checks both that the lengths are equal and that every character matches,
+so a shorter/longer or partially-wrong typed string returns nil."
   (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
 	 (typed (buffer-substring-no-properties start (point-max)))
 	 (target bible-gateway-memorise--target))
@@ -1857,7 +1866,9 @@ and the full target has been typed (no more, no less)."
 	 (string= typed target))))
 
 (defun bible-gateway-memorise--after-change (beg _end _len)
-  "Guard against edits before the typing start marker, then update highlight."
+  "Handle a buffer change starting at BEG in the typing buffer.
+Guards against edits before the typing start marker, then updates the
+live highlight in the verse buffer."
   (condition-case err
       (progn
         (when (< beg bible-gateway-memorise--typing-start)
@@ -1903,8 +1914,9 @@ new passage, or C-c C-c to quit session."
     (remove-overlays (point-min) (point-max))))
 
 (defun bible-gateway-memorise-next ()
-  "Prompt for a new book/passage and start a fresh memorisation session,
-reusing the existing verse and typing buffers/windows."
+  "Start a fresh memorisation session for a new book/passage.
+Reuses the existing verse and typing buffers/windows rather than
+creating new ones."
   (interactive)
   (bible-gateway-memorise))
 
