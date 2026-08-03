@@ -555,7 +555,7 @@ Distributed under the GPL-3.0 license. See
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/kristjoc/bible-gateway.svg?style=for-the-badge
-[contributors-url]: https://github.com/kristoc/bible-gateway/graphs/contributors
+[contributors-url]: https://github.com/kristjoc/bible-gateway/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/kristjoc/bible-gateway.svg?style=for-the-badge
 [forks-url]: https://github.com/kristjoc/bible-gateway/network/members
 [stars-shield]: https://img.shields.io/github/stars/kristjoc/bible-gateway.svg?style=for-the-badge
