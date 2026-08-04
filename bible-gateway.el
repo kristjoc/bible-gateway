@@ -356,7 +356,8 @@ The query to BibleGateway is still sent using the localized book name."
     ("DNB1930" . "Det Norsk Bibelselskap 1930")
     ("BULG" . "Bulgarian Bible")
     ("SV1917" . "Svenska 1917")
-    ("DN1933" . "Dette er Biblen på dansk"))
+    ("DN1933" . "Dette er Biblen på dansk")
+    ("VULGATE" . "Biblia Sacra Vulgata"))
   "Mapping of Bible version codes to their full names.")
 
 (defun bible-gateway--version-books ()
@@ -373,6 +374,7 @@ The query to BibleGateway is still sent using the localized book name."
     ("BULG"    bible-gateway-bible-books-bulg)
     ("SV1917"  bible-gateway-bible-books-sv1917)
     ("DN1933"  bible-gateway-bible-books-dn1933)
+    ("VULGATE"  bible-gateway-bible-books-vulgate)
     (_         bible-gateway-bible-books-kjv)))
 
 (defun bible-gateway--localize-book (display-name)
@@ -522,13 +524,13 @@ Returns nil if the cache file does not exist or is invalid."
       (replace-regexp-in-string
        "&#\\([0-9]+\\);"
        (lambda (match)
-	 (char-to-string (string-to-number (match-string 1 match))))
+         (char-to-string (string-to-number (match-string 1 match))))
        (replace-regexp-in-string
-	"&[a-z]+;"
-	(lambda (match)
-	  (or (alist-get match entity-map nil nil #'string=)
-	      match))
-	text)))))
+        "&[a-z]+;"
+        (lambda (match)
+          (or (alist-get match entity-map nil nil #'string=)
+              match))
+        text)))))
 
 (defun bible-gateway--fetch-votd ()
   "Fetch the daily Bible verse using the BibleGateway API.
@@ -536,27 +538,27 @@ If the API is unavailable (e.g., geo-blocked), falls back to scraping.
 If scraping also fails, returns the fallback verse."
   (let ((url-request-method "GET")
         (url (concat
-	      "https://www.biblegateway.com/votd/get/?format=json&version="
-	      bible-gateway-bible-version))
+              "https://www.biblegateway.com/votd/get/?format=json&version="
+              bible-gateway-bible-version))
         (fallback-result
-	 (format "%s\n%s"
-		 (bible-gateway--format-verse bible-gateway-fallback-verse)
-		 (let ((ref-text bible-gateway-fallback-reference))
-		   (concat (make-string
-			    (- bible-gateway-text-width (length ref-text)) ?\s)
-			   ref-text)))))
+         (format "%s\n%s"
+                 (bible-gateway--format-verse bible-gateway-fallback-verse)
+                 (let ((ref-text bible-gateway-fallback-reference))
+                   (concat (make-string
+                            (- bible-gateway-text-width (length ref-text)) ?\s)
+                           ref-text)))))
     (condition-case nil
-	(with-current-buffer (let ((url-mime-charset-string "utf-8"))
-			       (url-retrieve-synchronously
-				url t t bible-gateway-request-timeout))
-	  (goto-char (point-min))
-	  (when (search-forward "\n\n" nil t)
-	    (let ((response-body
-		   (buffer-substring-no-properties (point) (point-max))))
+        (with-current-buffer (let ((url-mime-charset-string "utf-8"))
+                               (url-retrieve-synchronously
+                                url t t bible-gateway-request-timeout))
+          (goto-char (point-min))
+          (when (search-forward "\n\n" nil t)
+            (let ((response-body
+                   (buffer-substring-no-properties (point) (point-max))))
               ;; Check if API returned "Content Unavailable" instead of JSON
-	      (if (or (string-match-p "<title>Content Unavailable</title>"
-				      response-body)
-		      (not (string-match-p "^\\s-*{" response-body)))
+              (if (or (string-match-p "<title>Content Unavailable</title>"
+                                      response-body)
+                      (not (string-match-p "^\\s-*{" response-body)))
                   ;; API unavailable, try scraping
                   (condition-case nil
                       (bible-gateway--scrape-votd)
@@ -565,7 +567,7 @@ If scraping also fails, returns the fallback verse."
                      fallback-result))
                 ;; API returned JSON, process it
                 (let* ((json-data
-			(json-parse-string response-body :object-type 'hash-table))
+                        (json-parse-string response-body :object-type 'hash-table))
                        (votd (gethash "votd" json-data))
                        (raw-text (gethash "text" votd))
                        (verse-text (bible-gateway--decode-html raw-text))
@@ -577,7 +579,7 @@ If scraping also fails, returns the fallback verse."
                           formatted-verse
                           (let ((ref-text verse-reference))
                             (concat
-			     (make-string (- fill-width (length ref-text)) ?\s)
+                             (make-string (- fill-width (length ref-text)) ?\s)
                              ref-text))))))))
       (error
        ;; Network error or timeout, try scraping first
@@ -594,12 +596,12 @@ Returns a single formatted string without verse numbers nor reference."
       (let ((url "https://www.biblegateway.com") citation)
         ;; 1. Retrieve homepage and extract reference.
         (with-current-buffer
-	    (url-retrieve-synchronously url t t bible-gateway-request-timeout)
-	  (set-buffer-multibyte t)
-	  (decode-coding-region (point-min) (point-max) 'utf-8)
+            (url-retrieve-synchronously url t t bible-gateway-request-timeout)
+          (set-buffer-multibyte t)
+          (decode-coding-region (point-min) (point-max) 'utf-8)
           (goto-char (point-min))
           (when(re-search-forward
-		"<span class=\"citation\">\\([^<]+\\)</span>" nil t)
+                "<span class=\"citation\">\\([^<]+\\)</span>" nil t)
             (setq citation (match-string 1))))
         (unless citation
           (error "Bible reference not found"))
@@ -609,66 +611,66 @@ Returns a single formatted string without verse numbers nor reference."
         ;;        (passage (car (last parts)))
         ;;        (book (string-join (butlast parts) " ")))
 
-	(let* ((split-pos (string-match "\\b[0-9]+:\\s-*[0-9]" citation))
-	       (book    (string-trim (substring citation 0 split-pos)))
-	       (passage (replace-regexp-in-string ":\\s-+" ":"
-						  (string-trim (substring
-								citation
-								split-pos)))))
+        (let* ((split-pos (string-match "\\b[0-9]+:\\s-*[0-9]" citation))
+               (book    (string-trim (substring citation 0 split-pos)))
+               (passage (replace-regexp-in-string ":\\s-+" ":"
+                                                  (string-trim (substring
+                                                                citation
+                                                                split-pos)))))
           ;; 3. Capture passage output.
           (with-temp-buffer
-	    (let ((bible-gateway-include-ref t))
-	      (bible-gateway-get-passage (bible-gateway--localize-book book) passage))
-	    (let* ((raw (buffer-string))
+            (let ((bible-gateway-include-ref t))
+              (bible-gateway-get-passage (bible-gateway--localize-book book) passage))
+            (let* ((raw (buffer-string))
                    ;; Remove any success/status lines.
                    (raw (replace-regexp-in-string
-			 "Bible passage inserted successfully!.*$" "" raw))
+                         "Bible passage inserted successfully!.*$" "" raw))
                    ;; Split into lines for filtering.
                    (lines (split-string raw "\n"))
                    kept)
 
               ;; 4. Remove header / reference / empty lines, and verse numbers.
-	      (let ((local-ref nil))
-		(dolist (ln lines)
+              (let ((local-ref nil))
+                (dolist (ln lines)
                   (let ((trim (string-trim ln))
-			(skip nil))
+                        (skip nil))
                     (when (or (string-match-p "\\`\\s-*\\'" trim)
                               ;; Header line often contains passage and version.
                               ;; (and (string-match-p (regexp-quote passage) trim)
                               ;; (and (string-match-p (regexp-quote book) trim)
-			      (and (string-match-p (regexp-quote (bible-gateway--localize-book book)) trim)
-				   (string-match-p
-				    (regexp-quote (format "(%s)" bible-gateway-bible-version)) trim)
-				   (setq local-ref trim))
-			      ;; Any trailing reference line duplicated below.
-			      (and (string-match-p (regexp-quote citation) trim)
-				   (string-match-p (regexp-quote bible-gateway-bible-version) trim)))
+                              (and (string-match-p (regexp-quote (bible-gateway--localize-book book)) trim)
+                                   (string-match-p
+                                    (regexp-quote (format "(%s)" bible-gateway-bible-version)) trim)
+                                   (setq local-ref trim))
+                              ;; Any trailing reference line duplicated below.
+                              (and (string-match-p (regexp-quote citation) trim)
+                                   (string-match-p (regexp-quote bible-gateway-bible-version) trim)))
                       (setq skip t))
                     (unless skip
                       ;; Remove verse numbers.
                       (setq trim (replace-regexp-in-string "\\s-*\\([0-9]+\\)\\.\\s-*" " " trim))
-		      (when (length> trim 0)
-			(push trim kept)))))
+                      (when (length> trim 0)
+                        (push trim kept)))))
 
-		(setq kept (nreverse kept))
+                (setq kept (nreverse kept))
 
-		;; 5. Join all remaining lines into one paragraph (space separated).
-		(let* ((joined (string-join kept " "))
+                ;; 5. Join all remaining lines into one paragraph (space separated).
+                (let* ((joined (string-join kept " "))
                        ;; Normalize whitespace.
                        (joined (replace-regexp-in-string "\\s-+" " " joined))
                        ;; Trim.
                        (joined (string-trim joined)))
 
-		  ;; 6. Final format with your existing formatter.
-		  (let* ((formatted (bible-gateway--format-verse joined))
-			 (ref-text (format "%s (%s)"
-					   (concat (bible-gateway--localize-book book)
-						   " "
-						   passage)
-					   bible-gateway-bible-version))
-			 ;; (ref-text (format "%s (%s)" citation bible-gateway-bible-version))
-			 (fill-width bible-gateway-text-width)
-			 (aligned-ref (concat (make-string (max 0 (- fill-width (length ref-text))) ?\s)
+                  ;; 6. Final format with your existing formatter.
+                  (let* ((formatted (bible-gateway--format-verse joined))
+                         (ref-text (format "%s (%s)"
+                                           (concat (bible-gateway--localize-book book)
+                                                   " "
+                                                   passage)
+                                           bible-gateway-bible-version))
+                         ;; (ref-text (format "%s (%s)" citation bible-gateway-bible-version))
+                         (fill-width bible-gateway-text-width)
+                         (aligned-ref (concat (make-string (max 0 (- fill-width (length ref-text))) ?\s)
                                               ref-text)))
                     (format "%s\n%s" formatted aligned-ref))))))))
     (error
@@ -676,7 +678,7 @@ Returns a single formatted string without verse numbers nor reference."
      (let* ((formatted (bible-gateway--format-verse bible-gateway-fallback-verse))
             (ref-text bible-gateway-fallback-reference)
             (aligned-ref (concat (make-string (max 0 (- bible-gateway-text-width (length ref-text))) ?\s)
-				 ref-text)))
+                                 ref-text)))
        (format "%s\n%s" formatted aligned-ref)))))
 
 
@@ -1064,13 +1066,13 @@ resulting URL always use KJV regardless of the current
   "Build the BibleGateway quicksearch URL for KEYWORD.
 Optional START is the result offset for pagination (default 0)."
   (concat "https://www.biblegateway.com/quicksearch/?qs_version="
-	  (url-encode-url bible-gateway-bible-version)
-	  "&quicksearch="
-	  (url-encode-url keyword)
-	  "&resultspp="
-	  (number-to-string bible-gateway-search-results-per-page)
-	  "&startnumber="
-	  (number-to-string (1+ (or start 0)))))
+          (url-encode-url bible-gateway-bible-version)
+          "&quicksearch="
+          (url-encode-url keyword)
+          "&resultspp="
+          (number-to-string bible-gateway-search-results-per-page)
+          "&startnumber="
+          (number-to-string (1+ (or start 0)))))
 
 (defun bible-gateway--strip-search-html (text)
   "Strip HTML from search result TEXT, keeping only the plain content."
@@ -1079,17 +1081,17 @@ Optional START is the result offset for pagination (default 0)."
     ;; Remove the bible-item-extras div and its contents
     (goto-char (point-min))
     (while (re-search-forward
-	    "<div class=\"bible-item-extras\">\\(.\\|\n\\)*?</div>" nil t)
+            "<div class=\"bible-item-extras\">\\(.\\|\n\\)*?</div>" nil t)
       (replace-match ""))
     ;; Replace small-caps Lord with "LORD" (may contain <b> inside)
     (goto-char (point-min))
     (while (re-search-forward
-	    "<span class=\"small-caps\"[^>]*>\\(?:<b>\\)?\\(Lord\\)\\(?:</b>\\)?</span>" nil t)
+            "<span class=\"small-caps\"[^>]*>\\(?:<b>\\)?\\(Lord\\)\\(?:</b>\\)?</span>" nil t)
       (replace-match "LORD"))
     ;; Replace small-caps Jesus with "JESUS" (may contain <b> inside)
     (goto-char (point-min))
     (while (re-search-forward
-	    "<span class=\"small-caps\"[^>]*>\\(?:<b>\\)?\\(Jesus\\)\\(?:</b>\\)?</span>" nil t)
+            "<span class=\"small-caps\"[^>]*>\\(?:<b>\\)?\\(Jesus\\)\\(?:</b>\\)?</span>" nil t)
       (replace-match "JESUS"))
     ;; Remove <b> and </b> tags but keep their content
     (goto-char (point-min))
@@ -1109,72 +1111,72 @@ Optional START is the result offset for pagination. Returns a plist with
 keys :count, :keyword, :start, and :results, where :results is a list
 of (ref . text) cons cells."
   (let ((url (bible-gateway--build-search-url keyword start))
-	(count 0)
-	(results '()))
+        (count 0)
+        (results '()))
     (condition-case err
-	(with-current-buffer
-	    (url-retrieve-synchronously url t t bible-gateway-request-timeout)
-	  (set-buffer-multibyte t)
-	  (decode-coding-region (point-min) (point-max) 'utf-8)
+        (with-current-buffer
+            (url-retrieve-synchronously url t t bible-gateway-request-timeout)
+          (set-buffer-multibyte t)
+          (decode-coding-region (point-min) (point-max) 'utf-8)
 
-	  ;; Extract total count from the "All (N)" filter option
-	  ;; Handles comma-separated numbers like "All (6,753)"
-	  (goto-char (point-min))
-	  (when (re-search-forward
-		 "data-display=\"All\"[^>]*>All[[:space:]]*(\\([0-9,]+\\))" nil t)
-	    (setq count (string-to-number
-			 (replace-regexp-in-string "," "" (match-string 1)))))
+          ;; Extract total count from the "All (N)" filter option
+          ;; Handles comma-separated numbers like "All (6,753)"
+          (goto-char (point-min))
+          (when (re-search-forward
+                 "data-display=\"All\"[^>]*>All[[:space:]]*(\\([0-9,]+\\))" nil t)
+            (setq count (string-to-number
+                         (replace-regexp-in-string "," "" (match-string 1)))))
 
-	  ;; Fallback: try "N Results" pattern (e.g., "6,968 Results")
-	  (when (zerop count)
-	    (goto-char (point-min))
-	    (when (re-search-forward
-		   "\\([0-9,]+\\)[[:space:]]+Results" nil t)
-	      (setq count (string-to-number
-			   (replace-regexp-in-string "," "" (match-string 1))))))
+          ;; Fallback: try "N Results" pattern (e.g., "6,968 Results")
+          (when (zerop count)
+            (goto-char (point-min))
+            (when (re-search-forward
+                   "\\([0-9,]+\\)[[:space:]]+Results" nil t)
+              (setq count (string-to-number
+                           (replace-regexp-in-string "," "" (match-string 1))))))
 
-	  ;; Extract each search result from <li class="row bible-item">
-	  (goto-char (point-min))
-	  (while (re-search-forward
-		  "<li class=\"row bible-item\"" nil t)
-	    (let ((li-start (match-beginning 0))
-		  (li-end (save-excursion
-			    (if (re-search-forward "</li>" nil t)
-				(match-end 0)
-			      (point-max))))
-		  (ref nil)
-		  (text nil))
-	      ;; Extract reference
-	      (goto-char li-start)
-	      (when (re-search-forward
-		     "<a class=\"bible-item-title\"[^>]*>\\([^<]+\\)</a>"
-		     li-end t)
-		(setq ref (string-trim (match-string 1))))
-	      ;; Extract preview text
-	      (goto-char li-start)
-	      (when (re-search-forward
-		     "<div class=\"bible-item-text[^\"]*\">"
-		     li-end t)
-		(let ((text-start (match-end 0))
-		      (text-end (save-excursion
-				  (if (re-search-forward
-				       "</div><!-- bible-item-text -->"
-				       li-end t)
-				      (match-beginning 0)
-				    (if (re-search-forward "</div>" li-end t)
-					(match-beginning 0)
-				      li-end)))))
-		  (setq text (bible-gateway--strip-search-html
-			      (buffer-substring-no-properties
-			       text-start text-end)))))
-	      ;; Collect result
-	      (when (and ref text)
-		(push (cons ref text) results))
-	      (goto-char li-end)))
-	  (list :count count
-		:keyword keyword
-		:start (or start 0)
-		:results (nreverse results)))
+          ;; Extract each search result from <li class="row bible-item">
+          (goto-char (point-min))
+          (while (re-search-forward
+                  "<li class=\"row bible-item\"" nil t)
+            (let ((li-start (match-beginning 0))
+                  (li-end (save-excursion
+                            (if (re-search-forward "</li>" nil t)
+                                (match-end 0)
+                              (point-max))))
+                  (ref nil)
+                  (text nil))
+              ;; Extract reference
+              (goto-char li-start)
+              (when (re-search-forward
+                     "<a class=\"bible-item-title\"[^>]*>\\([^<]+\\)</a>"
+                     li-end t)
+                (setq ref (string-trim (match-string 1))))
+              ;; Extract preview text
+              (goto-char li-start)
+              (when (re-search-forward
+                     "<div class=\"bible-item-text[^\"]*\">"
+                     li-end t)
+                (let ((text-start (match-end 0))
+                      (text-end (save-excursion
+                                  (if (re-search-forward
+                                       "</div><!-- bible-item-text -->"
+                                       li-end t)
+                                      (match-beginning 0)
+                                    (if (re-search-forward "</div>" li-end t)
+                                        (match-beginning 0)
+                                      li-end)))))
+                  (setq text (bible-gateway--strip-search-html
+                              (buffer-substring-no-properties
+                               text-start text-end)))))
+              ;; Collect result
+              (when (and ref text)
+                (push (cons ref text) results))
+              (goto-char li-end)))
+          (list :count count
+                :keyword keyword
+                :start (or start 0)
+                :results (nreverse results)))
       (error
        (message "Error fetching search results: %s" (error-message-string err))
        (list :count 0 :keyword keyword :start (or start 0) :results nil)))))
@@ -1202,14 +1204,14 @@ of (ref . text) cons cells."
 (defun bible-gateway--highlight-keyword (text keyword)
   "Return TEXT with all occurrences of KEYWORD highlighted."
   (let ((result (copy-sequence text))
-	(case-fold-search t)
-	(start 0)
-	(kw-re (regexp-quote keyword)))
+        (case-fold-search t)
+        (start 0)
+        (kw-re (regexp-quote keyword)))
     (while (string-match kw-re result start)
       (let ((beg (match-beginning 0))
-	    (end (match-end 0)))
-	(put-text-property beg end 'face 'bible-gateway-search-keyword-face result)
-	(setq start end)))
+            (end (match-end 0)))
+        (put-text-property beg end 'face 'bible-gateway-search-keyword-face result)
+        (setq start end)))
     result))
 
 (defun bible-gateway--wrap-search-text (text indent)
@@ -1217,7 +1219,7 @@ of (ref . text) cons cells."
   (with-temp-buffer
     (insert text)
     (let ((fill-prefix (make-string indent ?\s))
-	  (fill-column (- (window-body-width) 5)))
+          (fill-column (- (window-body-width) 5)))
       (fill-region (point-min) (point-max))
       (buffer-string))))
 
@@ -1234,74 +1236,74 @@ of (ref . text) cons cells."
   "Display search results DATA in a dedicated buffer.
 DATA is a plist as returned by `bible-gateway--parse-search-results'."
   (let ((buf (get-buffer-create bible-gateway-search-buffer-name))
-	(count (plist-get data :count))
-	(keyword (plist-get data :keyword))
-	(start (plist-get data :start))
-	(results (plist-get data :results))
-	(rpp bible-gateway-search-results-per-page)
-	(version-name (or (cdr (assoc bible-gateway-bible-version
-				      bible-gateway-version-names))
-			  bible-gateway-bible-version)))
+        (count (plist-get data :count))
+        (keyword (plist-get data :keyword))
+        (start (plist-get data :start))
+        (results (plist-get data :results))
+        (rpp bible-gateway-search-results-per-page)
+        (version-name (or (cdr (assoc bible-gateway-bible-version
+                                      bible-gateway-version-names))
+                          bible-gateway-bible-version)))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
-	(erase-buffer)
+        (erase-buffer)
 
-	;; Header
-	(let* ((page-start (1+ start))
-	       (page-end (min count (+ start (length results))))
-	       (header (if (> count rpp)
-			   (format "%d Bible results for \"%s\" from %s. (showing %d-%d)"
-				   count keyword version-name page-start page-end)
-			 (format "%d Bible results for \"%s\" from %s."
-				 count keyword version-name))))
-	  (insert (propertize header 'face 'bible-gateway-search-header-face))
-	  (insert "\n\n"))
+        ;; Header
+        (let* ((page-start (1+ start))
+               (page-end (min count (+ start (length results))))
+               (header (if (> count rpp)
+                           (format "%d Bible results for \"%s\" from %s. (showing %d-%d)"
+                                   count keyword version-name page-start page-end)
+                         (format "%d Bible results for \"%s\" from %s."
+                                 count keyword version-name))))
+          (insert (propertize header 'face 'bible-gateway-search-header-face))
+          (insert "\n\n"))
 
-	(if (null results)
-	    (insert "No results found.\n")
+        (if (null results)
+            (insert "No results found.\n")
 
-	  (insert (propertize "Bible search results"
-			      'face 'bible-gateway-search-header-face))
-	  (insert "\n\n")
+          (insert (propertize "Bible search results"
+                              'face 'bible-gateway-search-header-face))
+          (insert "\n\n")
 
-	  ;; Each result
-	  (dolist (entry results)
-	    (let* ((ref (car entry))
-		   (text (cdr entry))
-		   (highlighted-text (bible-gateway--highlight-keyword
-				      text keyword))
-		   (wrapped-text (bible-gateway--wrap-search-text
-				  highlighted-text 3)))
-	      ;; Reference as a clickable button with * prefix
-	      (insert "* ")
-	      (let ((ref-start (point)))
-		(insert ref)
-		(put-text-property ref-start (point)
-				   'face 'bible-gateway-search-ref-face)
-		(put-text-property ref-start (point)
-				   'bible-gateway-ref ref)
-		(put-text-property ref-start (point)
-				   'mouse-face 'highlight))
-	      (insert "\n")
-	      ;; Preview text
-	      (insert "   " wrapped-text)
-	      (insert "\n\n")))
+          ;; Each result
+          (dolist (entry results)
+            (let* ((ref (car entry))
+                   (text (cdr entry))
+                   (highlighted-text (bible-gateway--highlight-keyword
+                                      text keyword))
+                   (wrapped-text (bible-gateway--wrap-search-text
+                                  highlighted-text 3)))
+              ;; Reference as a clickable button with * prefix
+              (insert "* ")
+              (let ((ref-start (point)))
+                (insert ref)
+                (put-text-property ref-start (point)
+                                   'face 'bible-gateway-search-ref-face)
+                (put-text-property ref-start (point)
+                                   'bible-gateway-ref ref)
+                (put-text-property ref-start (point)
+                                   'mouse-face 'highlight))
+              (insert "\n")
+              ;; Preview text
+              (insert "   " wrapped-text)
+              (insert "\n\n")))
 
-	  ;; Pagination footer
-	  (when (> count rpp)
-	    (let* ((current-page (1+ (/ start rpp)))
-		   (total-pages (ceiling (/ (float count) rpp)))
-		   (has-prev (> start 0))
-		   (has-next (< (+ start rpp) count))
-		   (nav-parts '()))
-	      (when has-prev (push "P: previous page" nav-parts))
-	      (when has-next (push "N: next page" nav-parts))
-	      (insert (propertize
-		       (format "— Page %d/%d — %s —"
-			       current-page total-pages
-			       (string-join (nreverse nav-parts) ", "))
-		       'face 'bible-gateway-search-header-face))
-	      (insert "\n")))))
+          ;; Pagination footer
+          (when (> count rpp)
+            (let* ((current-page (1+ (/ start rpp)))
+                   (total-pages (ceiling (/ (float count) rpp)))
+                   (has-prev (> start 0))
+                   (has-next (< (+ start rpp) count))
+                   (nav-parts '()))
+              (when has-prev (push "P: previous page" nav-parts))
+              (when has-next (push "N: next page" nav-parts))
+              (insert (propertize
+                       (format "— Page %d/%d — %s —"
+                               current-page total-pages
+                               (string-join (nreverse nav-parts) ", "))
+                       'face 'bible-gateway-search-header-face))
+              (insert "\n")))))
 
       ;; Set mode FIRST, then store state (mode kills local vars)
       (bible-gateway-search-mode)
@@ -1315,17 +1317,17 @@ DATA is a plist as returned by `bible-gateway--parse-search-results'."
   "Fetch and display the next page of search results."
   (interactive)
   (let* ((rpp bible-gateway-search-results-per-page)
-	 (next-start (+ bible-gateway-search--start rpp))
-	 (total bible-gateway-search--total))
+         (next-start (+ bible-gateway-search--start rpp))
+         (total bible-gateway-search--total))
     (if (>= next-start total)
-	(message "Already on the last page.")
+        (message "Already on the last page.")
       (message "Fetching next page...")
       (let ((data (bible-gateway--parse-search-results
-		   bible-gateway-search--keyword next-start)))
-	;; Preserve total count if the new page didn't find it
-	(when (zerop (plist-get data :count))
-	  (plist-put data :count total))
-	(bible-gateway--display-search-results data)))))
+                   bible-gateway-search--keyword next-start)))
+        ;; Preserve total count if the new page didn't find it
+        (when (zerop (plist-get data :count))
+          (plist-put data :count total))
+        (bible-gateway--display-search-results data)))))
 
 (defun bible-gateway-search--prev-page ()
   "Fetch and display the previous page of search results."
@@ -1333,15 +1335,15 @@ DATA is a plist as returned by `bible-gateway--parse-search-results'."
   (if (<= bible-gateway-search--start 0)
       (message "Already on the first page.")
     (let* ((rpp bible-gateway-search-results-per-page)
-	   (prev-start (max 0 (- bible-gateway-search--start rpp)))
-	   (total bible-gateway-search--total))
+           (prev-start (max 0 (- bible-gateway-search--start rpp)))
+           (total bible-gateway-search--total))
       (message "Fetching previous page...")
       (let ((data (bible-gateway--parse-search-results
-		   bible-gateway-search--keyword prev-start)))
-	;; Preserve total count if the new page didn't find it
-	(when (zerop (plist-get data :count))
-	  (plist-put data :count total))
-	(bible-gateway--display-search-results data)))))
+                   bible-gateway-search--keyword prev-start)))
+        ;; Preserve total count if the new page didn't find it
+        (when (zerop (plist-get data :count))
+          (plist-put data :count total))
+        (bible-gateway--display-search-results data)))))
 
 (defun bible-gateway-search--open-passage ()
   "Open the Bible passage for the reference at point with context."
@@ -1350,26 +1352,26 @@ DATA is a plist as returned by `bible-gateway--parse-search-results'."
     ;; If not directly on a reference, search backward for one
     (unless ref
       (save-excursion
-	(when (re-search-backward "^\\* " nil t)
-	  (goto-char (match-end 0))
-	  (setq ref (get-text-property (point) 'bible-gateway-ref)))))
+        (when (re-search-backward "^\\* " nil t)
+          (goto-char (match-end 0))
+          (setq ref (get-text-property (point) 'bible-gateway-ref)))))
     (if ref
-	(let* ((parts (bible-gateway--split-reference ref))
-	       (book (car parts))
-	       (passage (cdr parts))
-	       (expanded (bible-gateway--expand-verse-context passage))
-	       (buf (get-buffer-create bible-gateway-passage-buffer-name)))
-	  (message "Fetching %s %s..." book expanded)
-	  (with-current-buffer buf
-	    (let ((inhibit-read-only t))
-	      (erase-buffer)
-	      (let ((bible-gateway-include-ref t))
-		(bible-gateway-get-passage book expanded))
-	      (goto-char (point-min))
-	      (bible-gateway-passage-mode)))
-	  (display-buffer buf '(display-buffer-in-side-window
-				(side . bottom)
-				(window-height . 0.35))))
+        (let* ((parts (bible-gateway--split-reference ref))
+               (book (car parts))
+               (passage (cdr parts))
+               (expanded (bible-gateway--expand-verse-context passage))
+               (buf (get-buffer-create bible-gateway-passage-buffer-name)))
+          (message "Fetching %s %s..." book expanded)
+          (with-current-buffer buf
+            (let ((inhibit-read-only t))
+              (erase-buffer)
+              (let ((bible-gateway-include-ref t))
+                (bible-gateway-get-passage book expanded))
+              (goto-char (point-min))
+              (bible-gateway-passage-mode)))
+          (display-buffer buf '(display-buffer-in-side-window
+                                (side . bottom)
+                                (window-height . 0.35))))
       (message "No reference found at point."))))
 
 (defun bible-gateway-search--mouse-open-passage (event)
@@ -1393,10 +1395,10 @@ For example, \"1 Chronicles 5:7\" returns (\"1 Chronicles\" . \"5:7\")."
 \"5\" (whole chapter, no verse) is returned as-is."
   (if (string-match "^\\([0-9]+\\):\\([0-9]+\\)$" passage)
       (let* ((chapter (match-string 1 passage))
-	     (verse (string-to-number (match-string 2 passage)))
-	     (start (max 1 (1- verse)))
-	     (end (1+ verse)))
-	(format "%s:%d-%d" chapter start end))
+             (verse (string-to-number (match-string 2 passage)))
+             (start (max 1 (1- verse)))
+             (end (1+ verse)))
+        (format "%s:%d-%d" chapter start end))
     ;; No verse number (whole chapter) or already a range — return as-is
     passage))
 
@@ -1406,7 +1408,7 @@ For example, \"1 Chronicles 5:7\" returns (\"1 Chronicles\" . \"5:7\")."
   (let ((pos (point)))
     (forward-line 1)
     (if (re-search-forward "^\\* " nil t)
-	(goto-char (match-end 0))
+        (goto-char (match-end 0))
       (goto-char pos)
       (message "No more results."))))
 
@@ -1416,7 +1418,7 @@ For example, \"1 Chronicles 5:7\" returns (\"1 Chronicles\" . \"5:7\")."
   (let ((pos (point)))
     (beginning-of-line)
     (if (re-search-backward "^\\* " nil t)
-	(goto-char (match-end 0))
+        (goto-char (match-end 0))
       (goto-char pos)
       (message "No previous result."))))
 
@@ -1543,7 +1545,7 @@ Press q to close the buffer."
   (let ((data (bible-gateway--parse-search-results keyword)))
     (bible-gateway--display-search-results data)
     (message "%d results for \"%s\"."
-	     (plist-get data :count) keyword)))
+             (plist-get data :count) keyword)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1669,24 +1671,24 @@ the book.  Returns nil if REF cannot be parsed."
               (let ((book (bible-gateway--translate-csv-book (car parsed)))
                     (chap (cdr parsed))
                     (passage-start (point)))
-		(insert (format "─── %s (%s) ───\n\n" ref bible-gateway-bible-version))
+                (insert (format "─── %s (%s) ───\n\n" ref bible-gateway-bible-version))
                 (let ((bible-gateway-include-ref nil))
                   (bible-gateway-get-passage book chap))
-		;; Insert a blank line before each new chapter within a
-		;; multi-chapter range (a new chapter always restarts
-		;; verse numbering at "1.").
-		(save-excursion
-		  (goto-char passage-start)
-		  (let ((first t))
-		    (while (re-search-forward "^1\\.\\s-" nil t)
-		      (let ((mb (match-beginning 0))
-			    (me (match-end 0)))
-			(if first
-			    (setq first nil)
-			  (goto-char mb)
-			  (insert "\n")
-			  (setq me (1+ me)))
-			(goto-char me)))))
+                ;; Insert a blank line before each new chapter within a
+                ;; multi-chapter range (a new chapter always restarts
+                ;; verse numbering at "1.").
+                (save-excursion
+                  (goto-char passage-start)
+                  (let ((first t))
+                    (while (re-search-forward "^1\\.\\s-" nil t)
+                      (let ((mb (match-beginning 0))
+                            (me (match-end 0)))
+                        (if first
+                            (setq first nil)
+                          (goto-char mb)
+                          (insert "\n")
+                          (setq me (1+ me)))
+                        (goto-char me)))))
                 ;; Tag each verse so n/p navigation works.
                 (save-excursion
                   (goto-char passage-start)
@@ -1820,11 +1822,11 @@ Covers corfu, company, built-in completion-at-point, and dabbrev."
 (defun bible-gateway-memorise--update-highlight ()
   "Recolor the verse buffer based on what has been typed so far."
   (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
-	 (typed (buffer-substring-no-properties start (point-max)))
+         (typed (buffer-substring-no-properties start (point-max)))
          (target bible-gateway-memorise--target)
          (verse-buf bible-gateway-memorise--verse-buffer)
          (verse-start bible-gateway-memorise--verse-text-start)
-	 (has-error nil))
+         (has-error nil))
     (with-current-buffer verse-buf
       (let ((inhibit-read-only t))
         (remove-overlays (point-min) (point-max))
@@ -1847,23 +1849,23 @@ Covers corfu, company, built-in completion-at-point, and dabbrev."
   (let ((buf (current-buffer)))
     (with-current-buffer buf
       (let ((cookie (face-remap-add-relative 'mode-line '(:background "red"))))
-	(run-with-timer 0.15 nil
-			(lambda ()
-			  (when (buffer-live-p buf)
-			    (with-current-buffer buf
-			      (face-remap-remove-relative cookie)
-			      (force-mode-line-update)))))
-	(force-mode-line-update)))))
+        (run-with-timer 0.15 nil
+                        (lambda ()
+                          (when (buffer-live-p buf)
+                            (with-current-buffer buf
+                              (face-remap-remove-relative cookie)
+                              (force-mode-line-update)))))
+        (force-mode-line-update)))))
 
 (defun bible-gateway-memorise--all-correct-p ()
   "Return non-nil if the typed text exactly matches the target.
 Checks both that the lengths are equal and that every character matches,
 so a shorter/longer or partially-wrong typed string returns nil."
   (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
-	 (typed (buffer-substring-no-properties start (point-max)))
-	 (target bible-gateway-memorise--target))
+         (typed (buffer-substring-no-properties start (point-max)))
+         (target bible-gateway-memorise--target))
     (and (= (length typed) (length target))
-	 (string= typed target))))
+         (string= typed target))))
 
 (defun bible-gateway-memorise--after-change (beg _end _len)
   "Handle a buffer change starting at BEG in the typing buffer.
@@ -1874,7 +1876,7 @@ live highlight in the verse buffer."
         (when (< beg bible-gateway-memorise--typing-start)
           (goto-char (max (point) bible-gateway-memorise--typing-start)))
         (bible-gateway-memorise--update-highlight)
-	(when (bible-gateway-memorise--all-correct-p)
+        (when (bible-gateway-memorise--all-correct-p)
           (let* ((elapsed (float-time (time-subtract (current-time)
                                                      bible-gateway-memorise--start-time)))
                  (words (/ (length bible-gateway-memorise--target) 5.0))
