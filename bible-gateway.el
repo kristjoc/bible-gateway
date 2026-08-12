@@ -81,7 +81,7 @@
 Other supported versions, which are available in the Public Domain, are
 LSG in French, RVA in Spanish, ALB in Albanian, UKR in Ukrainian, RUSV
 in Russian, LUTH1545 in German, DNB1930 in Norwegian, BULG in Bulgarian,
-SV1917 in Swedish, DN1933 in Danish, and R1933 in Finnish."
+SV1917 in Swedish, DN1933 in Danish, R1933 in Finnish, and KAR in Hungarian."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
@@ -365,6 +365,26 @@ The query to BibleGateway is still sent using the localized book name."
     ("2 Johanneksen" . 1) ("3 Johanneksen" . 1) ("Juudaksen" . 1) ("Ilmestys" . 22))
   "List of Bible books (R1933 version) with their number of chapters.")
 
+(defconst bible-gateway-bible-books-kar
+  '(("1 Mózes" . 50) ("2 Mózes" . 40) ("3 Mózes" . 27) ("4 Mózes" . 36)
+    ("5 Mózes" . 34) ("Józsué" . 24) ("Birák" . 21) ("Ruth" . 4)
+    ("1 Sámuel" . 31) ("2 Sámuel" . 24) ("1 Királyok" . 22) ("2 Királyok" . 25)
+    ("1 Krónika" . 29) ("2 Krónika" . 36) ("Ezsdrás" . 10) ("Nehemiás" . 13)
+    ("Eszter" . 10) ("Jób" . 42) ("Zsoltárok" . 150) ("Példabeszédek" . 31)
+    ("Prédikátor" . 12) ("Énekek Éneke" . 8) ("Ézsaiás" . 66) ("Jeremiás" . 52)
+    ("Jeremiás sir" . 5) ("Ezékiel" . 48) ("Dániel" . 12) ("Hóseás" . 14)
+    ("Jóel" . 3) ("Ámos" . 9) ("Abdiás" . 1) ("Jónás" . 4) ("Mikeás" . 7)
+    ("Náhum" . 3) ("Habakuk" . 3) ("Sofoniás" . 3) ("Aggeus" . 2)
+    ("Zakariás" . 14) ("Malakiás" . 4) ("Máté" . 28) ("Márk" . 16)
+    ("Lukács" . 24) ("János" . 21) ("Apostolok" . 28) ("Rómaiakhoz" . 16)
+    ("1 Korintusi" . 16) ("2 Korintusi" . 13) ("Galatákhoz" . 6)
+    ("Efézusiakhoz" . 6) ("Filippiekhez" . 4) ("Kolosséiakhoz" . 4)
+    ("1 Tesszalonika" . 5) ("2 Tesszalonika" . 3) ("1 Timóteushoz" . 6)
+    ("2 Timóteushoz" . 4) ("Titushoz" . 3) ("Filemonhoz" . 1) ("Zsidókhoz" . 13)
+    ("Jakab" . 5) ("1 Péter" . 5) ("2 Péter" . 3) ("1 János" . 5)
+    ("2 János" . 1) ("3 János" . 1) ("Júdás" . 1) ("Jelenések" . 22))
+  "List of Bible books (KAR version) with their number of chapters.")
+
 (defconst bible-gateway-version-names
   '(("KJV" . "King James Version")
     ("LSG" . "Louis Segond")
@@ -377,7 +397,8 @@ The query to BibleGateway is still sent using the localized book name."
     ("BULG" . "Bulgarian Bible")
     ("SV1917" . "Svenska 1917")
     ("DN1933" . "Dette er Biblen på dansk")
-    ("R1933" . "Raamattu 1933/38"))
+    ("R1933" . "Raamattu 1933/38")
+    ("KAR" . "Hungarian Károli"))
   "Mapping of Bible version codes to their full names.")
 
 (defun bible-gateway--version-books ()
@@ -395,6 +416,7 @@ The query to BibleGateway is still sent using the localized book name."
     ("SV1917"   bible-gateway-bible-books-sv1917)
     ("DN1933"   bible-gateway-bible-books-dn1933)
     ("R1933"    bible-gateway-bible-books-r1933)
+    ("KAR"      bible-gateway-bible-books-kar)
     (_          bible-gateway-bible-books-kjv)))
 
 (defun bible-gateway--localize-book (display-name)
