@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.7.0
+;; Package-Version: 1.7.1
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -415,11 +415,11 @@ Use `customize-variable' to persist the change across sessions."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar bible-gateway-cache-dir
-  (locate-user-emacs-file ".cache/bible-gateway/")
-  "Directory where `bible-gateway' cache file is stored.")
+  (locate-user-emacs-file "bible-gateway/votd/")
+  "Directory where the `bible-gateway' cache file is stored.")
 
 (defvar bible-gateway-cache-file
-  (expand-file-name "bible-gateway-votd" bible-gateway-cache-dir)
+  (expand-file-name "votd-cache.eld" bible-gateway-cache-dir)
   "File path for the verse of the day cache.")
 
 (defun bible-gateway--ensure-cache-dir ()
@@ -433,7 +433,7 @@ Use `customize-variable' to persist the change across sessions."
   (with-temp-file bible-gateway-cache-file
     (let ((print-length nil)
           (print-level nil))
-      (insert ";; BibleGateway Verse of the Day\n")
+      (insert ";; BibleGateway Verse-of-the-Day Cache\n")
       (prin1 `(:date ,date :version ,version :data ,data) (current-buffer)))))
 
 (defun bible-gateway--read-cache ()
@@ -1550,19 +1550,14 @@ Press q to close the buffer."
 ;;                   Package Section V - Bible Reading Plan                   ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom bible-gateway-plans-dir
+(defvar bible-gateway-plans-dir
   (locate-user-emacs-file "bible-gateway/plans/")
-  "Directory containing reading-plan CSV files.
-
-Each CSV must have a header row with columns Date,Passage and use
-ISO dates (YYYY-MM-DD) in column 1.  The Passage column may contain
-one or more references separated by semicolons, e.g.
-\"Gen 1; Mat 1; Ezr 1; Acts 1\".
-
-Row 1 of the CSV defines the start date of the plan; subsequent
-rows are read in order and matched against the current date."
-  :type 'directory
-  :group 'bible-gateway)
+  "Directory containing CSV reading plan files.
+Each CSV must have a header row with columns Date,Passage and use ISO
+dates (YYYY-MM-DD) in column 1. The Passage column may contain one or
+more references separated by semicolons, e.g. \"Gen 1; Mat 1; Ezr 1;
+Acts 1\". Row 1 of the CSV defines the start date of the plan;
+subsequent rows are read in order and matched against the current date.")
 
 (defcustom bible-gateway-reading-plan nil
   "Filename of the active reading plan inside `bible-gateway-plans-dir'.
@@ -1575,7 +1570,7 @@ Set to nil to disable reading-plan commands.  Example:
   "Return the absolute path to the active plan CSV, or signal an error."
   (unless bible-gateway-reading-plan
     (user-error
-     "No reading plan set.  Customize `bible-gateway-reading-plan'"))
+     "No reading plan set. Customize `bible-gateway-reading-plan'"))
   (let ((path (expand-file-name bible-gateway-reading-plan
                                 bible-gateway-plans-dir)))
     (unless (file-readable-p path)
@@ -1763,6 +1758,42 @@ Triggers whenever there is a mismatch anywhere in the currently typed
 text, and keeps triggering on further edits until it is corrected."
   :type 'boolean)
 
+(defvar bible-gateway-memorise-dir
+  (locate-user-emacs-file "bible-gateway/memorise/")
+  "Directory where the `bible-gateway' memorise file is stored.")
+
+(defvar bible-gateway-memorise-cache-file
+  (expand-file-name "memorise.eld" bible-gateway-memorise-dir)
+  "File path where references of the previously memorised verses are stored.")
+
+(defun bible-gateway-memorise--read-cache ()
+  "Read and return the cached list of `(BOOK . PASSAGE)' pairs."
+  (if (file-exists-p bible-gateway-memorise-cache-file)
+      (with-temp-buffer
+        (insert-file-contents bible-gateway-memorise-cache-file)
+        (condition-case nil
+            (read (current-buffer))
+          (error nil)))
+    nil))
+
+(defun bible-gateway-memorise--write-cache (cache-list)
+  "Write CACHE-LIST to `bible-gateway-memorise-cache-file'."
+  (let ((dir (file-name-directory bible-gateway-memorise-cache-file)))
+    (unless (file-directory-p dir)
+      (make-directory dir t)))
+  (with-temp-file bible-gateway-memorise-cache-file
+    (let ((print-level nil)
+          (print-length nil))
+      (insert ";;; Cached verses for bible-gateway-memorise\n")
+      (pp cache-list (current-buffer)))))
+
+(defun bible-gateway-memorise--add-to-cache (book passage)
+  "Add BOOK and PASSAGE to the front of the cache if not already present."
+  (let* ((cache (bible-gateway-memorise--read-cache))
+         (pair (cons book passage))
+         ;; Use `remove` to pull it out if it exists, keeping the most recent at the top
+         (new-cache (cons pair (remove pair cache))))
+    (bible-gateway-memorise--write-cache new-cache)))
 
 (defun bible-gateway-memorise--fetch-text (book passage)
   "Fetch BOOK PASSAGE text via `bible-gateway-get-passage'.
@@ -1920,20 +1951,46 @@ creating new ones."
   (interactive)
   (bible-gateway-memorise))
 
+(defun bible-gateway-memorise--prompt-for-verse ()
+  "Prompt for a verse, using the cache if available.
+Returns a cons `(BOOK . PASSAGE)'."
+  (let* ((cache (bible-gateway-memorise--read-cache))
+         (new-option "...(choose a new Bible verse to memorise)")
+         ;; (cdr x) is already "John 3:16", so we use that directly as the display string
+         (alist (mapcar (lambda (x)
+                          (cons (cdr x) x))
+                        cache))
+         (choices (cons new-option (mapcar #'car alist)))
+         (selection (if cache
+                        (completing-read "Select verse to memorise: " choices nil t)
+                      new-option)))
+    (if (string= selection new-option)
+        ;; User wants a new verse (or cache was empty)
+        (let* ((b (bible-gateway--prompt-book))
+               (p (bible-gateway--prompt-chapter-verse b)))
+          (bible-gateway-memorise--add-to-cache b p)
+          (cons b p))
+      ;; User selected a cached verse
+      (cdr (assoc selection alist)))))
+
 ;;;###autoload
 (defun bible-gateway-memorise (&optional book passage)
   "Practice touch-typing while memorising a Bible verse.
 Prompts for BOOK and PASSAGE like `bible-gateway-get-passage', then
-splits the window: the verse to memorise on top, a typing area below."
+splits the window: the verse to memorise on top, a typing area below.
+Previously practiced verses are cached and offered in a menu."
   (interactive)
-  (let* ((chosen-book (or book (bible-gateway--prompt-book)))
-         (chosen-passage (or passage (bible-gateway--prompt-chapter-verse chosen-book)))
+  (let* ((pair (unless (and book passage)
+                 (bible-gateway-memorise--prompt-for-verse)))
+         (chosen-book (or book (car pair)))
+         (chosen-passage (or passage (cdr pair)))
          (fetched (bible-gateway-memorise--fetch-text chosen-book chosen-passage))
          (reference (car fetched))
          (verse-text (cdr fetched))
          (verse-buf (get-buffer-create "*Bible Memorise: Verse*"))
          (typing-buf (get-buffer-create "*Bible Memorise: Typing*"))
          (verse-text-start nil))   ; shared across both buffers
+
     (when (string-empty-p verse-text)
       (user-error "Could not fetch passage text"))
     (delete-other-windows)
@@ -1947,6 +2004,7 @@ splits the window: the verse to memorise on top, a typing area below."
         (insert verse-text)
         (goto-char (point-min)))
       (setq buffer-read-only t))
+
     ;; --- Typing buffer (editable) ---
     (with-current-buffer typing-buf
       ;; Remove any hook left over from a previous session in this buffer
@@ -1966,6 +2024,7 @@ splits the window: the verse to memorise on top, a typing area below."
       (goto-char (point-max))
       (bible-gateway-memorise-mode 1)
       (add-hook 'after-change-functions #'bible-gateway-memorise--after-change nil t))
+
     ;; --- Split window ---
     (set-window-buffer (selected-window) verse-buf)
     (select-window (split-window-below))
