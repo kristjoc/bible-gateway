@@ -81,7 +81,7 @@
 Other supported versions, which are available in the Public Domain, are
 LSG in French, RVA in Spanish, ALB in Albanian, UKR in Ukrainian, RUSV
 in Russian, LUTH1545 in German, DNB1930 in Norwegian, BULG in Bulgarian,
-SV1917 in Swedish, and DN1933 in Danish."
+SV1917 in Swedish, DN1933 in Danish, and R1933 in Finnish."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
@@ -345,6 +345,26 @@ The query to BibleGateway is still sent using the localized book name."
     ("2 Johannes" . 1) ("3 Johannes" . 1) ("Judas" . 1) ("Aabenbaringen" . 22))
   "List of Bible books (DN1933 version) with their number of chapters.")
 
+(defconst bible-gateway-bible-books-r1933
+  '(("1 Mooseksen" . 50) ("2 Mooseksen" . 40) ("3 Mooseksen" . 27) ("4 Mooseksen" . 36)
+    ("5 Mooseksen" . 34) ("Joosuan" . 24) ("Tuomarien" . 21) ("Ruutin" . 4)
+    ("1 Samuelin" . 31) ("2 Samuelin" . 24) ("1 Kuninkaiden" . 22) ("2 Kuninkaiden" . 25)
+    ("1 Aikakirja" . 29) ("2 Aikakirja" . 36) ("Esran" . 10) ("Nehemian" . 13)
+    ("Esterin" . 10) ("Jobin" . 42) ("Psalmien" . 150) ("Sananlaskujen" . 31)
+    ("Saarnaajan" . 12) ("Laulujen laulu" . 8) ("Jesajan" . 66) ("Jeremian" . 52)
+    ("Valitusvirret" . 5) ("Hesekielin" . 48) ("Danielin" . 12) ("Hoosean" . 14)
+    ("Joelin" . 3) ("Aamoksen" . 9) ("Obadjan" . 1) ("Joonan" . 4) ("Miikan" . 7)
+    ("Nahumin" . 3) ("Habakukin" . 3) ("Sefanjan" . 3) ("Haggain" . 2)
+    ("Sakarjan" . 14) ("Malakian" . 4) ("Matteuksen" . 28) ("Markuksen" . 16)
+    ("Luukkaan" . 24) ("Johanneksen" . 21) ("Teot" . 28) ("Roomalaisille" . 16)
+    ("1 Korinttilaisille" . 16) ("2 Korinttilaisille" . 13) ("Galatalaisille" . 6)
+    ("Efesolaisille" . 6) ("Filippiläisille" . 4) ("Kolossalaisille" . 4)
+    ("1 Tessalonikalaisille" . 5) ("2 Tessalonikalaisille" . 3) ("1 Timoteukselle" . 6)
+    ("2 Timoteukselle" . 4) ("Titukselle" . 3) ("Filemonille" . 1) ("Heprealaisille" . 13)
+    ("Jaakobin" . 5) ("1 Pietarin" . 5) ("2 Pietarin" . 3) ("1 Johanneksen" . 5)
+    ("2 Johanneksen" . 1) ("3 Johanneksen" . 1) ("Juudaksen" . 1) ("Ilmestys" . 22))
+  "List of Bible books (R1933 version) with their number of chapters.")
+
 (defconst bible-gateway-version-names
   '(("KJV" . "King James Version")
     ("LSG" . "Louis Segond")
@@ -356,24 +376,26 @@ The query to BibleGateway is still sent using the localized book name."
     ("DNB1930" . "Det Norsk Bibelselskap 1930")
     ("BULG" . "Bulgarian Bible")
     ("SV1917" . "Svenska 1917")
-    ("DN1933" . "Dette er Biblen på dansk"))
+    ("DN1933" . "Dette er Biblen på dansk")
+    ("R1933" . "Raamattu 1933/38"))
   "Mapping of Bible version codes to their full names.")
 
 (defun bible-gateway--version-books ()
   "Return the book list for the current `bible-gateway-bible-version'."
   (pcase bible-gateway-bible-version
-    ("KJV"     bible-gateway-bible-books-kjv)
-    ("LSG"     bible-gateway-bible-books-lsg)
-    ("RVA"     bible-gateway-bible-books-rva)
-    ("ALB"     bible-gateway-bible-books-alb)
-    ("UKR"     bible-gateway-bible-books-ukr)
-    ("RUSV"    bible-gateway-bible-books-rusv)
+    ("KJV"      bible-gateway-bible-books-kjv)
+    ("LSG"      bible-gateway-bible-books-lsg)
+    ("RVA"      bible-gateway-bible-books-rva)
+    ("ALB"      bible-gateway-bible-books-alb)
+    ("UKR"      bible-gateway-bible-books-ukr)
+    ("RUSV"     bible-gateway-bible-books-rusv)
     ("LUTH1545" bible-gateway-bible-books-luth1545)
-    ("DNB1930" bible-gateway-bible-books-dnb1930)
-    ("BULG"    bible-gateway-bible-books-bulg)
-    ("SV1917"  bible-gateway-bible-books-sv1917)
-    ("DN1933"  bible-gateway-bible-books-dn1933)
-    (_         bible-gateway-bible-books-kjv)))
+    ("DNB1930"  bible-gateway-bible-books-dnb1930)
+    ("BULG"     bible-gateway-bible-books-bulg)
+    ("SV1917"   bible-gateway-bible-books-sv1917)
+    ("DN1933"   bible-gateway-bible-books-dn1933)
+    ("R1933"    bible-gateway-bible-books-r1933)
+    (_          bible-gateway-bible-books-kjv)))
 
 (defun bible-gateway--localize-book (display-name)
   "Return the localized book name for DISPLAY-NAME.
@@ -393,8 +415,8 @@ current version."
 ;;;###autoload
 (defun bible-gateway-set-version ()
   "Interactively select and set the active Bible version.
-Updates `bible-gateway-bible-version' for the current session.
-Use `customize-variable' to persist the change across sessions."
+Updates `bible-gateway-bible-version' for the current session. Use
+`customize-variable' to persist the change across sessions."
   (interactive)
   (let* ((choices (mapcar (lambda (pair)
                             (format "%-10s %s" (car pair) (cdr pair)))
