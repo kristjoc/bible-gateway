@@ -37,7 +37,7 @@
 - Supports various public domain Bible translations, including KJV (English),
   LSG (French), RVA (Spanish), ALB (Albanian), UKR (Ukrainian), RUSV (Russian),
   LUTH1545 (German), DNB1930 (Norwegian), BULG (Bulgarian), SV1917 (Swedish),
-  DN1933 (Danish), ...
+  DN1933 (Danish), VULGATE (Biblia Sacra Vulgata) ...
 - Plays audio chapters from the [Zondervan King James Audio
   Bible](https://www.biblegateway.com/audio/dramatized/kjv/Gen.1).
 - Searches [BibleGateway](https://www.biblegateway.com/) by keyword and displays
@@ -193,7 +193,7 @@ The Bible version/translation to use when fetching verses and passages. The foll
 - `"BULG"` - Bulgarian Bible
 - `"SV1917"` - Svenska 1917 (Swedish)
 - `"DN1933"` - Dette er Biblen på dansk (Danish)
-- 
+- `"VULGATE"` - Biblia Sacra Vulgata (Latin)
 
 #### `bible-gateway-text-width`
 

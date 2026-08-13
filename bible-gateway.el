@@ -81,7 +81,7 @@
 Other supported versions, which are available in the Public Domain, are
 LSG in French, RVA in Spanish, ALB in Albanian, UKR in Ukrainian, RUSV
 in Russian, LUTH1545 in German, DNB1930 in Norwegian, BULG in Bulgarian,
-SV1917 in Swedish, and DN1933 in Danish."
+SV1917 in Swedish, DN1933 in Danish, and VULGATA in Latin."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
@@ -344,6 +344,29 @@ The query to BibleGateway is still sent using the localized book name."
     ("Jakob" . 5) ("1 Peter" . 5) ("2 Peter" . 3) ("1 Johannes" . 5)
     ("2 Johannes" . 1) ("3 Johannes" . 1) ("Judas" . 1) ("Aabenbaringen" . 22))
   "List of Bible books (DN1933 version) with their number of chapters.")
+
+(defconst bible-gateway-bible-books-vulgata
+  '(("Genesis" . 50) ("Exodus" . 40) ("Leviticus" . 27) ("Numeri" . 36)
+    ("Deuteronomium" . 34) ("Iosue" . 24) ("Iudicum" . 21) ("Ruth" . 4)
+    ("I Samuelis" . 31) ("II Samuelis" . 24) ("I Regum" . 22) ("II Regum" . 25)
+    ("I Paralipomenon" . 29) ("II Paralipomenon" . 36) ("Esdrae" . 10)
+    ("Nehemiae" . 13) ("Tobiae" . 14) ("Iudith" . 16) ("Esther" . 16)
+    ("I Machabaeorum" . 16) ("II Machabaeorum" . 15) ("Iob" . 42)
+    ("Psalmi" . 150) ("Proverbia" . 31) ("Ecclesiastes" . 12)
+    ("Canticum Canticorum" . 8) ("Sapientia" . 19) ("Ecclesiasticus" . 51)
+    ("Isaias" . 66) ("Ieremias" . 52) ("Lamentationes" . 5) ("Baruch" . 6)
+    ("Ezechiel" . 48) ("Daniel" . 14) ("Osee" . 14) ("Ioel" . 3) ("Amos" . 9)
+    ("Abdias" . 1) ("Ionas" . 4) ("Michaeas" . 7) ("Nahum" . 3) ("Habacuc" . 3)
+    ("Sophonias" . 3) ("Aggaeus" . 2) ("Zacharias" . 14) ("Malachias" . 4)
+    ("Matthaeus" . 28) ("Marcus" . 16) ("Lucas" . 24) ("Ioannes" . 21)
+    ("Actus Apostolorum" . 28) ("Romanos" . 16) ("I Corinthios" . 16)
+    ("II Corinthios" . 13) ("Galatas" . 6) ("Ephesios" . 6) ("Philippenses" . 4)
+    ("Colossenses" . 4) ("I Thessalonicenses" . 5) ("II Thessalonicenses" . 3)
+    ("I Timotheum" . 6) ("II Timotheum" . 4) ("Titum" . 3) ("Philemonem" . 1)
+    ("Hebraeos" . 13) ("Iacobi" . 5) ("I Petri" . 5) ("II Petri" . 3)
+    ("I Ioannis" . 5) ("II Ioannis" . 1) ("III Ioannis" . 1) ("Iudae" . 1)
+    ("Apocalypsis" . 22))
+  "Bible Gateway VULGATE book list with chapter counts.")
 
 (defconst bible-gateway-version-names
   '(("KJV" . "King James Version")
