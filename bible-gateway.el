@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.7.1
+;; Package-Version: 1.7.2
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 ;;   clickable references and pagination
 ;; - Follow a daily reading plan from a CSV file
 ;; - Help you memorise Bible verses using touch-typing
+;; - Compare Bible translations side by side in one window
 ;;
 ;; Usage:
 ;;
@@ -61,6 +62,9 @@
 ;;
 ;; M-x `bible-gateway-memorise' helps you memorise Bible verses using a
 ;; touch-typing practice mode, with live color-coded feedback as you type.
+;;
+;; M-x `bible-gateway-compare' compares Bible passages from different Bible
+;; translations side by side in one window.
 
 ;;; Code:
 
@@ -455,7 +459,7 @@ Updates `bible-gateway-bible-version' for the current session. Use
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                           Caching Mechanism                                ;
+;;                 Caching Mechanism for the Verse of the Day                 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar bible-gateway-cache-dir
@@ -773,7 +777,7 @@ cache ONLY if successful, and returns the verse."
     (message "BibleGateway cache cleared.")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                     Package section II - Fetch a Bible Passage             ;
+;;                     Package Section II - Fetch a Bible Passage             ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun bible-gateway--prompt-book ()
@@ -1034,7 +1038,7 @@ passages. BOOK and PASSAGE are handled identically to
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;   Package Section III - Play Bible chapter from KJV Dramatized Audio       ;
+;;     Package Section III - Play Bible chapter from KJV Dramatized Audio     ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst bible-gateway-bible-books-osis
@@ -1591,7 +1595,152 @@ Press q to close the buffer."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                   Package Section V - Bible Reading Plan                   ;
+;;                   Package Section V - BibleGateway Compare                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar-local bible-gateway-compare--win-a nil
+  "Window containing Version A passage.")
+(defvar-local bible-gateway-compare--win-b nil
+  "Window containing Version B passage.")
+(defvar-local bible-gateway-compare--buf-a nil
+  "Buffer containing Version A passage.")
+(defvar-local bible-gateway-compare--buf-b nil
+  "Buffer containing Version B passage.")
+(defvar-local bible-gateway-compare--saved-win-config nil
+  "Window configuration prior to starting comparison.")
+
+(defun bible-gateway-compare--step-verse (key)
+  "Execute KEY (`n` or `p`) in both passage windows."
+  (dolist (win (list bible-gateway-compare--win-a bible-gateway-compare--win-b))
+    (when (window-live-p win)
+      (with-selected-window win
+        (let ((cmd (or (lookup-key bible-gateway-passage-mode-map (kbd key))
+                       (key-binding (kbd key)))))
+          (when (commandp cmd)
+            (call-interactively cmd)))))))
+
+(defun bible-gateway-compare-next-verse ()
+  "Move to the next verse in both passage windows."
+  (interactive)
+  (bible-gateway-compare--step-verse "n"))
+
+(defun bible-gateway-compare-prev-verse ()
+  "Move to the previous verse in both passage windows."
+  (interactive)
+  (bible-gateway-compare--step-verse "p"))
+
+(defun bible-gateway-compare-help ()
+  "Show brief help message for the compare panel."
+  (interactive)
+  (message "Compare Panel: [n]ext verse | [p]rev verse | [c]ompare new | [q]uit panel"))
+
+(defun bible-gateway-compare-quit ()
+  "Close compare session, kill passage buffers, and restore window layout."
+  (interactive)
+  (let ((cfg bible-gateway-compare--saved-win-config)
+        (ctrl-buf (current-buffer))
+        (buf-a bible-gateway-compare--buf-a)
+        (buf-b bible-gateway-compare--buf-b))
+    (when cfg
+      (set-window-configuration cfg))
+    (when (buffer-live-p buf-a)
+      (kill-buffer buf-a))
+    (when (buffer-live-p buf-b)
+      (kill-buffer buf-b))
+    (when (buffer-live-p ctrl-buf)
+      (kill-buffer ctrl-buf))))
+
+(defun bible-gateway-compare-new ()
+  "Start a new comparison session."
+  (interactive)
+  (bible-gateway-compare-quit)
+  (call-interactively #'bible-gateway-compare))
+
+(defvar bible-gateway-compare-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "n") #'bible-gateway-compare-next-verse)
+    (define-key map (kbd "p") #'bible-gateway-compare-prev-verse)
+    (define-key map (kbd "q") #'bible-gateway-compare-quit)
+    (define-key map (kbd "c") #'bible-gateway-compare-new)
+    (define-key map (kbd "?") #'bible-gateway-compare-help)
+    map)
+  "Keymap for `bible-gateway-compare-mode'.")
+
+(define-derived-mode bible-gateway-compare-mode special-mode "BG-Compare"
+  "Major mode for BibleGateway Compare Panel."
+  (setq buffer-read-only t)
+  (setq truncate-lines t))
+
+
+;;;###autoload
+(defun bible-gateway-compare (&optional book passage version-a version-b)
+  "Compare a Bible passage side-by-side with a minimal control panel."
+  (interactive)
+  (let* ((chosen-book (if (and book (not (string-empty-p book)))
+                          book
+                        (bible-gateway--prompt-book)))
+         (chosen-passage (if (and passage (not (string-empty-p passage)))
+                             passage
+                           (let* ((localized-book (bible-gateway--localize-book chosen-book))
+                                  (raw (bible-gateway--prompt-chapter-verse chosen-book))
+                                  (trimmed (string-trim (substring raw (length localized-book)))))
+                             (if (string-empty-p trimmed) "1" trimmed))))
+         (version-choices (mapcar (lambda (pair)
+                                    (format "%-10s %s" (car pair) (cdr pair)))
+                                  bible-gateway-version-names))
+         (v-a (if version-a version-a
+                (car (split-string
+                      (string-trim
+                       (completing-read "Version A: " version-choices nil t))))))
+         (v-b (if version-b version-b
+                (car (split-string
+                      (string-trim
+                       (completing-read "Version B: " version-choices nil t))))))
+         (saved-cfg (current-window-configuration)))
+
+    ;; Layout windows: Split bottom 4 lines for Control Panel, top into Left/Right
+    (delete-other-windows)
+    (let* ((win-ctrl (split-window-below -4))
+           (win-left (selected-window))
+           (win-right (split-window-right))
+           (buf-a-name (format "*Bible Passage (%s)*" v-a))
+           (buf-b-name (format "*Bible Passage (%s)*" v-b))
+           (display-buffer-overriding-action '(display-buffer-same-window)))
+
+      ;; Fetch Version A (Left Window)
+      (select-window win-left)
+      (let ((bible-gateway-bible-version v-a)
+            (bible-gateway-passage-buffer-name buf-a-name))
+        (bible-gateway-read-passage chosen-book chosen-passage))
+
+      ;; Fetch Version B (Right Window)
+      (select-window win-right)
+      (let ((bible-gateway-bible-version v-b)
+            (bible-gateway-passage-buffer-name buf-b-name))
+        (bible-gateway-read-passage chosen-book chosen-passage))
+
+      ;; Setup Control Panel Buffer & Window (Bottom)
+      (select-window win-ctrl)
+      (let ((ctrl-buf (get-buffer-create "*BibleGateway Compare Panel*")))
+        (with-current-buffer ctrl-buf
+          (let* ((inhibit-read-only t)
+                 (text "Type ? for help")
+                 (width (window-body-width win-ctrl))
+                 (pad (max 0 (/ (- width (length text)) 2))))
+            (erase-buffer)
+            (insert (make-string pad ?\s) text))
+          (bible-gateway-compare-mode)
+          (setq bible-gateway-compare--win-a win-left)
+          (setq bible-gateway-compare--win-b win-right)
+          (setq bible-gateway-compare--buf-a (window-buffer win-left))
+          (setq bible-gateway-compare--buf-b (window-buffer win-right))
+          (setq bible-gateway-compare--saved-win-config saved-cfg)
+          (goto-char (point-min)))
+        (switch-to-buffer ctrl-buf)
+        (set-window-dedicated-p win-ctrl t)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                   Package Section VI - Bible Reading Plan                  ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar bible-gateway-plans-dir
@@ -1765,7 +1914,7 @@ References are concatenated with headers separating each passage."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                   Package Section VI - Memorize and Touch-Type             ;
+;;                   Package Section VII - Memorize and Touch-Type            ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defface bible-gateway-memorise-correct-face
@@ -2077,7 +2226,7 @@ Previously practiced verses are cached and offered in a menu."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                     Package Section VII - Transient Menu                   ;
+;;                     Package Section VIII - Transient Menu                  ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (require 'transient)
@@ -2107,14 +2256,15 @@ Previously practiced verses are cached and offered in a menu."
    ("i" "Insert Bible passage" bible-gateway-get-passage)
    ("r" "Read Bible passage" bible-gateway-read-passage)
    ("p" "Today's reading" bible-gateway-read-today)
-   ("m" "Memorise Bible verses" bible-gateway-memorise)]
+   ("m" "Memorise Bible verses" bible-gateway-memorise)
+   ("c" "Compare Bible translations" bible-gateway-compare)]
   ["Audio"
    ("l" "Listen to chapter (KJV Dramatized)" bible-gateway-listen-passage)]
   ["Search"
    ("s" "Search by keyword" bible-gateway-search)]
   ["Settings & Utilities"
    ("V" "Set Bible version" bible-gateway-set-version)
-   ("c" "Clear verse-of-the-day cache" bible-gateway-clear-cache)])
+   ("C" "Clear verse-of-the-day cache" bible-gateway-clear-cache)])
 
 (provide 'bible-gateway)
 ;;; bible-gateway.el ends here
