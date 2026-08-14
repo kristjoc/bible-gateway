@@ -17,10 +17,9 @@
 <p align="center">
   <h3 align="center">bible-gateway: A BibleGateway Client for Emacs</h3>  
   <p align="center">
-    <b>bible-gateway</b> is a simple Emacs package that fetches the verse of the
-	day from https://biblegateway.com, inserts Bible passages at point or in a
-	dedicated buffer for reading, opens audio chapters in your browser, and searches for
-    keywords displaying the results in Emacs.
+    <b>bible-gateway</b> is a feature-rich Emacs interface for
+    [BibleGateway](https://biblegateway.com), designed for searching, reading,
+    and studying Scripture, directly in your editor.
     <br />
   </p>
 </p>
@@ -37,7 +36,7 @@
 - Supports various public domain Bible translations, including KJV (English),
   LSG (French), RVA (Spanish), ALB (Albanian), UKR (Ukrainian), RUSV (Russian),
   LUTH1545 (German), DNB1930 (Norwegian), BULG (Bulgarian), SV1917 (Swedish),
-  DN1933 (Danish), R1933 (Finnish), KAR (Hungarian), ...
+  DN1933 (Danish), R1933 (Finnish), KAR (Hungarian), VULGATE (Latin), ...
 - Plays audio chapters from the [Zondervan King James Audio
   Bible](https://www.biblegateway.com/audio/dramatized/kjv/Gen.1).
 - Searches [BibleGateway](https://www.biblegateway.com/) by keyword and displays
@@ -46,6 +45,8 @@
   passages in a single buffer.
 - Helps you memorise a Bible verse using a touch-typing practice mode, with live
   color-coded feedback as you type.
+- Compare two Bible translations side by side in split windows with synchronized
+  verse-by-verse navigation and a dedicated, Ediff-style control panel.
 - 
 
 ------
@@ -56,25 +57,25 @@
 
 <img src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/dashboard-light.png?raw=true">
 
-#### Displaying the Verse of the Day in the `*scratch*` Buffer
+#### Displaying the Verse of the Day in the `*scratch*` buffer
 
 <img src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/scratch-dark.png?raw=true">
 
-#### Inserting a Bible Passage at Point
+#### Inserting a Bible passage at point
 
 <img
 src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-get-passage.gif?raw=true">
 
-#### Playing a Bible Chapter in the Browser
+#### Playing a Bible chapter in the browser
 
 <img
 src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-listen-passage-in-browser.gif?raw=true">
 
-#### Playing a Bible Chapter with EMMS
+#### Playing a Bible chapter with EMMS
 
 Not available anymore due to Copyright.
 
-#### Search for a Keyword in BibleGateway
+#### Search for Bible words or phrases in BibleGateway
 
 <img
 src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-search.gif?raw=true">
@@ -84,6 +85,10 @@ src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gatew
 <img
 src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-memorise.gif?raw=true">
 
+#### Compare Bible translations side by side
+
+<img
+src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-memorise.gif?raw=true">
 
 ------
 
@@ -110,8 +115,9 @@ src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gatew
 bible-gateway is a simple Emacs package that fetches content from
 [BibleGateway](https://www.biblegateway.com/). It can fetch the verse of the
 day, insert any Bible verse, passage, or chapter(s) at point or in a dedicated
-buffer, play audio chapters in a browser tab, search for keywords, and help you
-memorise Bible verses — all from within Emacs.
+buffer, play audio chapters in a browser tab, search for Bible words or phrases,
+help you memorise Bible verses, and compare Bible translations side by side —
+all from within Emacs.
 
 ### Disclaimer
 
@@ -195,6 +201,7 @@ The Bible version/translation to use when fetching verses and passages. The foll
 - `"DN1933"` - Dette er Biblen på dansk (Danish)
 - `"R1933"` - Raamattu 1933/38 (Finnish)
 - `"KAR"` - Hungarian Károli (Hungarian)
+- `"VULGATE"` - Biblia Sacra Vulgate (Latin)
 - 
 
 #### `bible-gateway-text-width`
@@ -464,7 +471,7 @@ audio content is protected by copyright law and is intended for
 streaming through authorized platforms only. Please, use the Browser
 Tab feature for Bible Audio.  
 
-### Search for a keyword in BibleGateway
+### Search for Bible words or phrases in BibleGateway
 
 To search for a keyword in BibleGateway and display the results in Emacs, invoke
 `M-x bible-gateway-search` (or open the transient menu with `M-x bible-gateway`
@@ -478,7 +485,7 @@ buffer. Check out the
 [demo](https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-search.gif?raw=true)
 above to see how it works.
 
-### Read today's Bible plan
+### Read today's passage from a Bible reading plan
 
 Once `bible-gateway-reading-plan` is set and the CSV is in place, invoke `M-x
 bible-gateway-read-today` (or open the transient menu with `M-x bible-gateway`
@@ -513,7 +520,31 @@ Key bindings in the typing buffer:
 | `C-c RET` | Prompt for a new book/passage and start a fresh verse, reusing the same buffers. |
 
 See `bible-gateway-memorise-beep-on-error` below if you'd like an audible/visual
-nudge on every mistake.
+nudge on every mistake.  
+
+### Compare Bible translations side by side
+
+To compare a passage across two different translations, invoke `M-x
+bible-gateway-compare` (or open the transient menu with `M-x bible-gateway` and
+press `c`). Select the book, passage, and two Bible versions when prompted. The
+frame splits into three windows: Version A on the left, Version B on the right,
+and a minimal control panel at the bottom where your cursor lands automatically.
+
+Navigating inside the control panel synchronously steps through verses in both
+passage windows simultaneously, making side-by-side study effortless. Quitting
+the session automatically cleans up both passage buffers and restores your
+previous window layout.
+
+Key bindings in the control panel buffer:
+
+| Key | Action                                                                         |
+|-----|--------------------------------------------------------------------------------|
+| `n` | Move to the next verse in both passage windows.                                |
+| `p` | Move to the previous verse in both passage windows.                            |
+| `c` | Quit the current session and prompt for a new comparison.                      |
+| `q` | Close the control panel, kill both passage buffers, and restore window layout. |
+| `?` | Display a quick help message in the echo area.                                 |
+
 
 And that's it! God bless you! Have a great day! :-)
 
