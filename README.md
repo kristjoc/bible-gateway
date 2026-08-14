@@ -201,7 +201,7 @@ The Bible version/translation to use when fetching verses and passages. The foll
 - `"DN1933"` - Dette er Biblen på dansk (Danish)
 - `"R1933"` - Raamattu 1933/38 (Finnish)
 - `"KAR"` - Hungarian Károli (Hungarian)
-- `"VULGATE"` - Biblia Sacra Vulgate (Latin)
+- `"VULGATE"` - Biblia Sacra Vulgata (Latin)
 - 
 
 #### `bible-gateway-text-width`
