@@ -18,8 +18,8 @@
   <h3 align="center">bible-gateway: A BibleGateway Client for Emacs</h3>  
   <p align="center">
     <b>bible-gateway</b> is a feature-rich Emacs interface for
-    [BibleGateway](https://biblegateway.com), designed for searching, reading,
-    and studying Scripture, directly in your editor.
+    https://biblegateway.com, designed for searching, reading, and studying
+    Scripture, directly in your editor.
     <br />
   </p>
 </p>
