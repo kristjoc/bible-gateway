@@ -504,7 +504,7 @@ press `m`), and select the book and passage as usual. The frame splits into two
 buffers: the target verse on top (read-only) and a typing area below where your
 cursor starts. As you type, each character is colored green (correct) or red
 (incorrect) live in the verse buffer above, so you get immediate feedback on
-your accuracy.
+your accuracy. In addition, punctuation marks (, . ; :) are added automatically.
 
 The session only completes once every character has been typed correctly — typos
 alone won't trigger a "Amen!" message; keep typing/correcting until the whole

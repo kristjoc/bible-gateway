@@ -1014,7 +1014,8 @@ passages. BOOK and PASSAGE are handled identically to
                                   (trimmed (string-trim (substring raw (length localized-book)))))
                              (if (string-empty-p trimmed) "1" trimmed)))))
     ;; All prompting is done. Now create/display the buffer.
-    (message "Fetching %s %s..." chosen-book chosen-passage)
+    (message "Fetching %s %s (%s)..." chosen-book chosen-passage
+	     bible-gateway-bible-version)
     (let ((buf (get-buffer-create bible-gateway-passage-buffer-name))
           (passage-start nil))
       (display-buffer buf '(display-buffer-full-frame))
@@ -1924,7 +1925,8 @@ the book.  Returns nil if REF cannot be parsed."
       (let ((verses (bible-gateway-passage--verse-positions)))
         (when verses
           (bible-gateway-passage--highlight-index 0))))
-    (pop-to-buffer buf)))
+    (pop-to-buffer buf)
+    (delete-other-windows)))
 
 ;;;###autoload
 (defun bible-gateway-read-today ()
@@ -1942,6 +1944,8 @@ References are concatenated with headers separating each passage."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                   Package Section VII - Memorize and Touch-Type            ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(require 'seq)
 
 (defface bible-gateway-memorise-correct-face
   '((t :foreground "green3"))
@@ -1977,6 +1981,12 @@ Triggers whenever there is a mismatch anywhere in the currently typed
 text, and keeps triggering on further edits until it is corrected."
   :type 'boolean)
 
+(defvar-local bible-gateway-memorise-skip-punctuation-chars ",.;:!?"
+  "Characters that are auto-inserted rather than typed by hand.
+When the target verse's next character is one of these, it is
+inserted automatically so the user can focus on typing words, not
+punctuation.")
+
 (defvar bible-gateway-memorise-dir
   (locate-user-emacs-file "bible-gateway/memorise/")
   "Directory where the `bible-gateway' memorise file is stored.")
@@ -2006,12 +2016,34 @@ text, and keeps triggering on further edits until it is corrected."
       (insert ";;; Cached verses for bible-gateway-memorise\n")
       (pp cache-list (current-buffer)))))
 
-(defun bible-gateway-memorise--add-to-cache (book passage)
-  "Add BOOK and PASSAGE to the front of the cache if not already present."
+(defun bible-gateway-memorise--make-preview (text &optional max-len)
+  "Return a short preview of TEXT, truncated to MAX-LEN characters."
+  (let* ((max-len (or max-len 33))
+         (trimmed (string-trim text)))
+    (if (<= (length trimmed) max-len)
+        trimmed
+      (concat (string-trim (substring trimmed 0 max-len)) "..."))))
+
+;; (defun bible-gateway-memorise--add-to-cache (book passage)
+;;   "Add BOOK and PASSAGE to the front of the cache if not already present."
+;;   (let* ((cache (bible-gateway-memorise--read-cache))
+;;          (pair (cons book passage))
+;;          ;; Use `remove` to pull it out if it exists, keeping the most recent at the top
+;;          (new-cache (cons pair (remove pair cache))))
+;;     (bible-gateway-memorise--write-cache new-cache)))
+
+(defun bible-gateway-memorise--add-to-cache (book passage preview)
+  "Add or refresh the cache entry for BOOK/PASSAGE with PREVIEW.
+Moves the entry to the front (most-recently-used first), replacing
+any existing entry for the same BOOK and PASSAGE."
   (let* ((cache (bible-gateway-memorise--read-cache))
-         (pair (cons book passage))
-         ;; Use `remove` to pull it out if it exists, keeping the most recent at the top
-         (new-cache (cons pair (remove pair cache))))
+         (entry (list book passage preview))
+         (without-old (seq-remove
+                       (lambda (e)
+                         (and (equal (car e) book)
+                              (equal (cadr e) passage)))
+                       cache))
+         (new-cache (cons entry without-old)))
     (bible-gateway-memorise--write-cache new-cache)))
 
 (defun bible-gateway-memorise--fetch-text (book passage)
@@ -2067,6 +2099,24 @@ Covers corfu, company, built-in completion-at-point, and dabbrev."
   ;; anyway so a stray M-/ or TAB-based dabbrev doesn't do anything.
   (local-set-key (kbd "M-/") #'ignore))
 
+(defun bible-gateway-memorise--auto-skip-punctuation ()
+  "Auto-insert any run of skippable punctuation at the current position.
+Advances past consecutive characters in
+`bible-gateway-memorise-skip-punctuation-chars' found in the target
+text starting at the current typed length, inserting them into the
+typing buffer without requiring the user to type them."
+  (let* ((start bible-gateway-memorise--typing-start)
+         (target bible-gateway-memorise--target)
+         (idx (- (point-max) start))
+         (inhibit-modification-hooks t))
+    (while (and (< idx (length target))
+                (string-match-p
+                 (regexp-quote (char-to-string (aref target idx)))
+                 bible-gateway-memorise-skip-punctuation-chars))
+      (goto-char (point-max))
+      (insert (aref target idx))
+      (setq idx (1+ idx)))))
+
 (defun bible-gateway-memorise--update-highlight ()
   "Recolor the verse buffer based on what has been typed so far."
   (let* ((start (min bible-gateway-memorise--typing-start (point-max)))
@@ -2115,23 +2165,53 @@ so a shorter/longer or partially-wrong typed string returns nil."
     (and (= (length typed) (length target))
 	 (string= typed target))))
 
-(defun bible-gateway-memorise--after-change (beg _end _len)
+;; (defun bible-gateway-memorise--after-change (beg _end _len)
+;;   "Handle a buffer change starting at BEG in the typing buffer.
+;; Guards against edits before the typing start marker, then updates the
+;; live highlight in the verse buffer."
+;;   (condition-case err
+;;       (progn
+;;         (when (< beg bible-gateway-memorise--typing-start)
+;;           (goto-char (max (point) bible-gateway-memorise--typing-start)))
+;;         (bible-gateway-memorise--update-highlight)
+;; 	(when (bible-gateway-memorise--all-correct-p)
+;;           (let* ((elapsed (float-time (time-subtract (current-time)
+;;                                                      bible-gateway-memorise--start-time)))
+;;                  (words (/ (length bible-gateway-memorise--target) 5.0))
+;;                  (wpm (/ words (/ elapsed 60.0))))
+;;             (message "Amen! %.1f WPM in %.1fs.\nC-c C-r to keep practicing, C-c RET for a
+;; new passage, or C-c C-c to quit session."
+;;                      wpm elapsed))))
+;;     (error (message "bible-gateway-memorise error: %s" (error-message-string err)))))
+
+(defun bible-gateway-memorise--typed-at-end-p (beg end len)
+  "Return non-nil if this change is a plain insertion at the buffer end.
+True only for ordinary forward typing (not deletion, not a mid-buffer
+edit), so punctuation auto-skip never fires while correcting a mistake."
+  (and (> end beg)
+       (zerop len)
+       (= end (point-max))))
+
+(defun bible-gateway-memorise--after-change (beg end len)
   "Handle a buffer change starting at BEG in the typing buffer.
-Guards against edits before the typing start marker, then updates the
-live highlight in the verse buffer."
+Guards against edits before the typing start marker, auto-skips
+punctuation on forward typing only, then updates the live highlight
+in the verse buffer."
   (condition-case err
       (progn
         (when (< beg bible-gateway-memorise--typing-start)
           (goto-char (max (point) bible-gateway-memorise--typing-start)))
+        (when (bible-gateway-memorise--typed-at-end-p beg end len)
+          (bible-gateway-memorise--auto-skip-punctuation))
         (bible-gateway-memorise--update-highlight)
 	(when (bible-gateway-memorise--all-correct-p)
           (let* ((elapsed (float-time (time-subtract (current-time)
                                                      bible-gateway-memorise--start-time)))
                  (words (/ (length bible-gateway-memorise--target) 5.0))
                  (wpm (/ words (/ elapsed 60.0))))
-            (message "Amen! %.1f WPM in %.1fs.\nC-c C-r to keep practicing, C-c RET for a
-new passage, or C-c C-c to quit session."
-                     wpm elapsed))))
+	    (message
+	     "Amen! %.1f WPM, %.1fs -- C-c C-r: Retry, C-c RET: New verse, C-c C-c: Quit"
+	     wpm elapsed))))
     (error (message "bible-gateway-memorise error: %s" (error-message-string err)))))
 
 (defvar bible-gateway-memorise-mode-map
@@ -2170,27 +2250,66 @@ creating new ones."
   (interactive)
   (bible-gateway-memorise))
 
+;; (defun bible-gateway-memorise--prompt-for-verse ()
+;;   "Prompt for a verse, using the cache if available.
+;; Returns a cons `(BOOK . PASSAGE)'."
+;;   (let* ((cache (bible-gateway-memorise--read-cache))
+;;          (new-option "...(choose a new Bible verse to memorise)")
+;;          ;; (cdr x) is already "John 3:16", so we use that directly as the display string
+;;          (alist (mapcar (lambda (x)
+;;                           (cons (cdr x) x))
+;;                         cache))
+;;          (choices (cons new-option (mapcar #'car alist)))
+;;          (selection (if cache
+;;                         (completing-read "Select verse to memorise: " choices nil t)
+;;                       new-option)))
+;;     (if (string= selection new-option)
+;;         ;; User wants a new verse (or cache was empty)
+;;         (let* ((b (bible-gateway--prompt-book))
+;;                (p (bible-gateway--prompt-chapter-verse b)))
+;;           (bible-gateway-memorise--add-to-cache b p)
+;;           (cons b p))
+;;       ;; User selected a cached verse
+;;       (cdr (assoc selection alist)))))
+
 (defun bible-gateway-memorise--prompt-for-verse ()
   "Prompt for a verse, using the cache if available.
-Returns a cons `(BOOK . PASSAGE)'."
+Returns a cons `(BOOK . PASSAGE)'.  Cached verses are shown with a
+short preview of their text, right-aligned like a marginalia
+annotation."
   (let* ((cache (bible-gateway-memorise--read-cache))
-         (new-option "...(choose a new Bible verse to memorise)")
-         ;; (cdr x) is already "John 3:16", so we use that directly as the display string
-         (alist (mapcar (lambda (x)
-                          (cons (cdr x) x))
-                        cache))
+         (new-option "... (choose a new Bible verse)")
+         ;; entry is (BOOK PASSAGE PREVIEW); PASSAGE (e.g. "John 3:16")
+         ;; is used directly as the display candidate.
+         (alist (mapcar (lambda (e) (cons (nth 1 e) e)) cache))
          (choices (cons new-option (mapcar #'car alist)))
+         (width (+ 12 (apply #'max 0 (mapcar #'length (mapcar #'car alist)))))
+         (completion-extra-properties
+          (list :affixation-function
+                (lambda (cands)
+                  (mapcar
+                   (lambda (cand)
+                     (let* ((entry (cdr (assoc cand alist)))
+                            (preview (and entry (nth 2 entry))))
+                       (list cand ""
+                             (if preview
+                                 (propertize
+                                  (concat (make-string
+                                           (max 1 (- width (length cand)))
+                                           ?\s)
+                                          preview)
+                                  'face 'completions-annotations)
+                               ""))))
+                   cands))))
          (selection (if cache
                         (completing-read "Select verse to memorise: " choices nil t)
                       new-option)))
     (if (string= selection new-option)
-        ;; User wants a new verse (or cache was empty)
         (let* ((b (bible-gateway--prompt-book))
                (p (bible-gateway--prompt-chapter-verse b)))
-          (bible-gateway-memorise--add-to-cache b p)
           (cons b p))
-      ;; User selected a cached verse
-      (cdr (assoc selection alist)))))
+      (let ((entry (cdr (assoc selection alist))))
+        (cons (car entry) (cadr entry))))))
 
 ;;;###autoload
 (defun bible-gateway-memorise (&optional book passage)
@@ -2212,6 +2331,8 @@ Previously practiced verses are cached and offered in a menu."
 
     (when (string-empty-p verse-text)
       (user-error "Could not fetch passage text"))
+    (bible-gateway-memorise--add-to-cache chosen-book chosen-passage
+					  (bible-gateway-memorise--make-preview verse-text))
     (delete-other-windows)
     ;; --- Verse buffer (read-only) ---
     (with-current-buffer verse-buf
