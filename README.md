@@ -88,7 +88,7 @@ src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gatew
 #### Compare Bible translations side by side
 
 <img
-src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-memorise.gif?raw=true">
+src="https://github.com/kristjoc/bible-gateway/blob/main/screenshots/bible-gateway-compare.gif?raw=true">
 
 ------
 
