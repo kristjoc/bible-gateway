@@ -494,7 +494,24 @@ and press `p`). All of today's passages are fetched and displayed in a single
 `j/k` between verses as in the regular passage buffer.
 
 If today's date is not present in the CSV (the plan hasn't started yet, or has
-already ended), Emacs displays a message and no buffer is opened.  
+already ended), Emacs displays a message and no buffer is opened.
+
+Today's reading is marked as **done** the moment you navigate with `n`/`j` all
+the way to the last verse of the day's passages — simply opening the buffer is
+not enough. Progress is stored across sessions, so once a day is marked done it
+stays done even if you reopen and re-read it.
+
+The transient menu reflects this status right next to the "Today's reading"
+entry: a `✓` appears once you've reached the last verse for the day, so you
+can tell at a glance whether you've completed today's reading.
+
+#### Modeline indicator
+
+Enable `M-x bible-gateway-modeline-mode` to show a small, clickable indicator
+in the modeline reflecting today's reading-plan status: red `[✝]` if not yet
+done, turning green as `[✝]` once you've read through to the last verse.
+Clicking the indicator calls `bible-gateway-read-today` directly, so you can
+jump straight into today's reading from anywhere in Emacs.  
 
 ### Memorise Bible verses with touch-typing
 

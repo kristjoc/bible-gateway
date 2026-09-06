@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.7.1
+;; Package-Version: 1.7.2
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -48,7 +48,8 @@
 ;; or programmatically with the book name and verse(s) as arguments.
 ;;
 ;; M-x `bible-gateway-read-passage' works like `bible-gateway-get-passage' but
-;; displays the passage in a dedicated buffer in `text-mode'.
+;; displays the passage in a dedicated buffer, with `n'/`p' to navigate between
+;; verses.
 ;;
 ;; M-x `bible-gateway-listen-passage' plays a Bible chapter from KJV Zondervan
 ;; Audio in the browser.
@@ -90,18 +91,17 @@ and VULGATE in Latin."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
-  "The width of the verse of the day body in number of characters, default 80."
+  "The width of the verse of the day body, default 80 characters."
   :type 'natnum)
 
 (defcustom bible-gateway-fallback-verse "For God so loved the world,
-that he gave his only begotten Son,
-that whosoever believeth in him should not perish,
-but have everlasting life."
+that he gave his only begotten Son, that whosoever believeth in him
+should not perish, but have everlasting life."
   "The fallback verse to use when the online request fails."
   :type 'string)
 
 (defcustom bible-gateway-fallback-reference "John 3:16"
-  "The reference for the fallback verse."
+  "The reference of the fallback verse."
   :type 'string)
 
 (defcustom bible-gateway-request-timeout 3
@@ -109,7 +109,7 @@ but have everlasting life."
   :type 'integer)
 
 (defcustom bible-gateway-include-ref t
-  "If non-nil, print the reference (e.g., \"John 3 (KJV)\") with the passage."
+  "If non-nil, include the reference when inserting a passage."
   :type 'boolean)
 
 (defcustom bible-gateway-search-results-per-page 100
@@ -523,7 +523,7 @@ Returns nil if the cache file does not exist or is invalid."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                     Package Section I: Fetch the Verse of The Day          ;
+;;                Package Section I: Fetch the Verse of The Day               ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun bible-gateway--justify-line (line width)
@@ -679,10 +679,6 @@ Returns a single formatted string without verse numbers nor reference."
           (error "Bible reference not found"))
 
         ;; 2. Split citation into book + passage.
-        ;; (let* ((parts (split-string citation " +" t))
-        ;;        (passage (car (last parts)))
-        ;;        (book (string-join (butlast parts) " ")))
-
 	(let* ((split-pos (string-match "\\b[0-9]+:\\s-*[0-9]" citation))
 	       (book    (string-trim (substring citation 0 split-pos)))
 	       (passage (replace-regexp-in-string ":\\s-+" ":"
@@ -692,7 +688,8 @@ Returns a single formatted string without verse numbers nor reference."
           ;; 3. Capture passage output.
           (with-temp-buffer
 	    (let ((bible-gateway-include-ref t))
-	      (bible-gateway-get-passage (bible-gateway--localize-book book) passage))
+	      (bible-gateway-get-passage (bible-gateway--localize-book book)
+					 passage))
 	    (let* ((raw (buffer-string))
                    ;; Remove any success/status lines.
                    (raw (replace-regexp-in-string
@@ -708,19 +705,23 @@ Returns a single formatted string without verse numbers nor reference."
 			(skip nil))
                     (when (or (string-match-p "\\`\\s-*\\'" trim)
                               ;; Header line often contains passage and version.
-                              ;; (and (string-match-p (regexp-quote passage) trim)
-                              ;; (and (string-match-p (regexp-quote book) trim)
-			      (and (string-match-p (regexp-quote (bible-gateway--localize-book book)) trim)
+			      (and (string-match-p
+				    (regexp-quote
+				     (bible-gateway--localize-book book)) trim)
 				   (string-match-p
-				    (regexp-quote (format "(%s)" bible-gateway-bible-version)) trim)
+				    (regexp-quote
+				     (format "(%s)" bible-gateway-bible-version)) trim)
 				   (setq local-ref trim))
 			      ;; Any trailing reference line duplicated below.
-			      (and (string-match-p (regexp-quote citation) trim)
-				   (string-match-p (regexp-quote bible-gateway-bible-version) trim)))
+			      (and (string-match-p
+				    (regexp-quote citation) trim)
+				   (string-match-p
+				    (regexp-quote bible-gateway-bible-version) trim)))
                       (setq skip t))
                     (unless skip
                       ;; Remove verse numbers.
-                      (setq trim (replace-regexp-in-string "\\s-*\\([0-9]+\\)\\.\\s-*" " " trim))
+                      (setq trim
+			    (replace-regexp-in-string "\\s-*\\([0-9]+\\)\\.\\s-*" " " trim))
 		      (when (length> trim 0)
 			(push trim kept)))))
 
@@ -740,17 +741,20 @@ Returns a single formatted string without verse numbers nor reference."
 						   " "
 						   passage)
 					   bible-gateway-bible-version))
-			 ;; (ref-text (format "%s (%s)" citation bible-gateway-bible-version))
 			 (fill-width bible-gateway-text-width)
-			 (aligned-ref (concat (make-string (max 0 (- fill-width (length ref-text))) ?\s)
-                                              ref-text)))
+			 (aligned-ref (concat
+				       (make-string
+					(max 0 (- fill-width (length ref-text))) ?\s)
+                                       ref-text)))
                     (format "%s\n%s" formatted aligned-ref))))))))
     (error
      ;; Fallback verse.
      (let* ((formatted (bible-gateway--format-verse bible-gateway-fallback-verse))
             (ref-text bible-gateway-fallback-reference)
-            (aligned-ref (concat (make-string (max 0 (- bible-gateway-text-width (length ref-text))) ?\s)
-				 ref-text)))
+            (aligned-ref (concat
+			  (make-string
+			   (max 0 (- bible-gateway-text-width (length ref-text))) ?\s)
+			  ref-text)))
        (format "%s\n%s" formatted aligned-ref)))))
 
 
@@ -1571,6 +1575,9 @@ A verse is any region of text with the `bible-gateway-verse' property."
          (total (length (bible-gateway-passage--verse-positions))))
     (if (< next total)
         (bible-gateway-passage--highlight-index next)
+      (when bible-gateway-passage--plan-date
+        (bible-gateway--plan-mark-done bible-gateway-passage--plan-date)
+        (force-mode-line-update t))  ; <-- force all modelines to redraw now
       (message "Last verse."))))
 
 (defun bible-gateway-passage--prev ()
@@ -1812,6 +1819,41 @@ that BibleGateway does not recognize.  This map is consulted only
 for plan rendering; abbreviations not in the map pass through
 unchanged.")
 
+(defvar bible-gateway-plan-progress-file
+  (expand-file-name "progress.eld" bible-gateway-plans-dir)
+  "File storing the set of reading-plan dates already marked as done.")
+
+(defun bible-gateway--plan-progress-read ()
+  "Return the list of completed dates (strings, YYYY-MM-DD)."
+  (when (file-exists-p bible-gateway-plan-progress-file)
+    (condition-case nil
+        (with-temp-buffer
+          (insert-file-contents bible-gateway-plan-progress-file)
+          (goto-char (point-min))
+          (read (current-buffer)))
+      (error nil))))
+
+(defun bible-gateway--plan-progress-write (dates)
+  "Write DATES (a list of date strings) to the progress file."
+  (bible-gateway--ensure-cache-dir) ;; harmless if dir already exists
+  (unless (file-exists-p bible-gateway-plans-dir)
+    (make-directory bible-gateway-plans-dir t))
+  (with-temp-file bible-gateway-plan-progress-file
+    (let ((print-length nil)
+          (print-level nil))
+      (prin1 dates (current-buffer)))))
+
+(defun bible-gateway--plan-mark-done (date)
+  "Mark DATE as done, if not already."
+  (let ((dates (bible-gateway--plan-progress-read)))
+    (unless (member date dates)
+      (bible-gateway--plan-progress-write (cons date dates))
+      (force-mode-line-update t))))
+
+(defun bible-gateway--plan-done-p (date)
+  "Return non-nil if DATE is already marked done."
+  (member date (bible-gateway--plan-progress-read)))
+
 (defun bible-gateway--translate-csv-book (book)
   "Translate BOOK from CSV abbreviation to BibleGateway-friendly name.
 Returns BOOK unchanged if no translation is defined."
@@ -1921,6 +1963,10 @@ the book.  Returns nil if REF cannot be parsed."
               (insert (format "(could not parse reference: %s)\n\n" ref))))))
         (goto-char (point-min)))
       (bible-gateway-passage-mode)
+
+      (with-current-buffer bible-gateway-passage-buffer-name
+	(setq bible-gateway-passage--plan-date date))
+
       ;; Highlight the first tagged verse.
       (let ((verses (bible-gateway-passage--verse-positions)))
         (when verses
@@ -1930,8 +1976,7 @@ the book.  Returns nil if REF cannot be parsed."
 
 ;;;###autoload
 (defun bible-gateway-read-today ()
-  "Open today's readings from the active reading plan in one buffer.
-References are concatenated with headers separating each passage."
+  "Open today's readings from the active reading plan in one buffer."
   (interactive)
   (let* ((today (format-time-string "%Y-%m-%d"))
          (passage (bible-gateway--plan-lookup today)))
@@ -1942,7 +1987,53 @@ References are concatenated with headers separating each passage."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                   Package Section VII - Memorize and Touch-Type            ;
+;;                Package Section VII - Modeline Reading Indicator            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar-local bible-gateway-passage--plan-date nil
+  "If non-nil, the reading-plan date (YYYY-MM-DD) this buffer displays.
+Used to mark the day done only once the user reaches the last verse.")
+
+(defface bible-gateway-modeline-done-face
+  '((t :foreground "green3" :weight normal))
+  "Face for the modeline indicator when today's reading is done.")
+
+(defface bible-gateway-modeline-pending-face
+  '((t :foreground "red" :weight normal))
+  "Face for the modeline indicator when today's reading is not done.")
+
+(defun bible-gateway--modeline-string ()
+  "Return the propertized modeline string for today's reading status."
+  (let* ((today (format-time-string "%Y-%m-%d"))
+         (done (bible-gateway--plan-done-p today)))
+    (propertize
+     "[♰]"
+     'face (if done
+	       'bible-gateway-modeline-done-face
+	     'bible-gateway-modeline-pending-face)
+     'mouse-face 'mode-line-highlight
+     'help-echo "Click to read today's Bible passage"
+     'local-map (let ((map (make-sparse-keymap)))
+		  (define-key map [mode-line mouse-1] #'bible-gateway-read-today)
+		  map))))
+
+;;;###autoload
+(define-minor-mode bible-gateway-modeline-mode
+  "Toggle a modeline indicator showing today's reading-plan status.
+Click the indicator to read today's passage via
+`bible-gateway-read-today'."
+  :global t
+  :group 'bible-gateway
+  (if bible-gateway-modeline-mode
+      (unless (memq 'bible-gateway--modeline-string global-mode-string)
+        (setq global-mode-string
+              (append global-mode-string '((:eval (bible-gateway--modeline-string))))))
+    (setq global-mode-string
+          (remove '(:eval (bible-gateway--modeline-string)) global-mode-string))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                   Package Section VIII - Memorize and Touch-Type           ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (require 'seq)
@@ -2023,14 +2114,6 @@ punctuation.")
     (if (<= (length trimmed) max-len)
         trimmed
       (concat (string-trim (substring trimmed 0 max-len)) "..."))))
-
-;; (defun bible-gateway-memorise--add-to-cache (book passage)
-;;   "Add BOOK and PASSAGE to the front of the cache if not already present."
-;;   (let* ((cache (bible-gateway-memorise--read-cache))
-;;          (pair (cons book passage))
-;;          ;; Use `remove` to pull it out if it exists, keeping the most recent at the top
-;;          (new-cache (cons pair (remove pair cache))))
-;;     (bible-gateway-memorise--write-cache new-cache)))
 
 (defun bible-gateway-memorise--add-to-cache (book passage preview)
   "Add or refresh the cache entry for BOOK/PASSAGE with PREVIEW.
@@ -2165,25 +2248,6 @@ so a shorter/longer or partially-wrong typed string returns nil."
     (and (= (length typed) (length target))
 	 (string= typed target))))
 
-;; (defun bible-gateway-memorise--after-change (beg _end _len)
-;;   "Handle a buffer change starting at BEG in the typing buffer.
-;; Guards against edits before the typing start marker, then updates the
-;; live highlight in the verse buffer."
-;;   (condition-case err
-;;       (progn
-;;         (when (< beg bible-gateway-memorise--typing-start)
-;;           (goto-char (max (point) bible-gateway-memorise--typing-start)))
-;;         (bible-gateway-memorise--update-highlight)
-;; 	(when (bible-gateway-memorise--all-correct-p)
-;;           (let* ((elapsed (float-time (time-subtract (current-time)
-;;                                                      bible-gateway-memorise--start-time)))
-;;                  (words (/ (length bible-gateway-memorise--target) 5.0))
-;;                  (wpm (/ words (/ elapsed 60.0))))
-;;             (message "Amen! %.1f WPM in %.1fs.\nC-c C-r to keep practicing, C-c RET for a
-;; new passage, or C-c C-c to quit session."
-;;                      wpm elapsed))))
-;;     (error (message "bible-gateway-memorise error: %s" (error-message-string err)))))
-
 (defun bible-gateway-memorise--typed-at-end-p (beg end len)
   "Return non-nil if this change is a plain insertion at the buffer end.
 True only for ordinary forward typing (not deletion, not a mid-buffer
@@ -2249,28 +2313,6 @@ Reuses the existing verse and typing buffers/windows rather than
 creating new ones."
   (interactive)
   (bible-gateway-memorise))
-
-;; (defun bible-gateway-memorise--prompt-for-verse ()
-;;   "Prompt for a verse, using the cache if available.
-;; Returns a cons `(BOOK . PASSAGE)'."
-;;   (let* ((cache (bible-gateway-memorise--read-cache))
-;;          (new-option "...(choose a new Bible verse to memorise)")
-;;          ;; (cdr x) is already "John 3:16", so we use that directly as the display string
-;;          (alist (mapcar (lambda (x)
-;;                           (cons (cdr x) x))
-;;                         cache))
-;;          (choices (cons new-option (mapcar #'car alist)))
-;;          (selection (if cache
-;;                         (completing-read "Select verse to memorise: " choices nil t)
-;;                       new-option)))
-;;     (if (string= selection new-option)
-;;         ;; User wants a new verse (or cache was empty)
-;;         (let* ((b (bible-gateway--prompt-book))
-;;                (p (bible-gateway--prompt-chapter-verse b)))
-;;           (bible-gateway-memorise--add-to-cache b p)
-;;           (cons b p))
-;;       ;; User selected a cached verse
-;;       (cdr (assoc selection alist)))))
 
 (defun bible-gateway-memorise--prompt-for-verse ()
   "Prompt for a verse, using the cache if available.
@@ -2373,7 +2415,7 @@ Previously practiced verses are cached and offered in a menu."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                     Package Section VIII - Transient Menu                  ;
+;;                     Package Section IX - Transient Menu                    ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (require 'transient)
@@ -2402,7 +2444,12 @@ Previously practiced verses are cached and offered in a menu."
    ("v" "Verse of the day" bible-gateway-show-verse)
    ("i" "Insert Bible passage" bible-gateway-get-passage)
    ("r" "Read Bible passage" bible-gateway-read-passage)
-   ("p" "Today's reading" bible-gateway-read-today)
+   ;; ("p" "Today's reading" bible-gateway-read-today)
+   ("p" (lambda ()
+	  (concat "Today's reading"
+		  (if (bible-gateway--plan-done-p (format-time-string "%Y-%m-%d"))
+                      " ️✅" "")))
+    bible-gateway-read-today)
    ("m" "Memorise Bible verses" bible-gateway-memorise)
    ("c" "Compare Bible translations" bible-gateway-compare)]
   ["Audio"
