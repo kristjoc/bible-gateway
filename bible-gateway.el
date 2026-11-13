@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.7.2
+;; Package-Version: 1.7.3
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ Other supported versions, which are available in the Public Domain, are
 LSG in French, RVA in Spanish, ALB in Albanian, UKR in Ukrainian, RUSV
 in Russian, LUTH1545 in German, DNB1930 in Norwegian, BULG in Bulgarian,
 SV1917 in Swedish, DN1933 in Danish, R1933 in Finnish, KAR in Hungarian,
-and VULGATE in Latin."
+VULGATE in Latin, and CUV or CUVS in Chinese."
   :type 'string)
 
 (defcustom bible-gateway-text-width 80
@@ -413,6 +413,46 @@ The query to BibleGateway is still sent using the localized book name."
     ("Apocalypsis" . 22))
   "List of Bible books (VULGATE version) with their number of chapters.")
 
+(defconst bible-gateway-bible-books-cuv
+  '(("創 世 記" . 50) ("出 埃 及 記" . 40) ("利 未 記" . 27) ("民 數 記" . 36)
+    ("申 命 記" . 34) ("約 書 亞 記" . 24) ("士 師 記" . 21) ("路 得 記" . 4)
+    ("撒 母 耳 記 上" . 31) ("撒 母 耳 記 下" . 24) ("列 王 紀 上" . 22) ("列 王 紀 下" . 25)
+    ("歷 代 志 上" . 29) ("歷 代 志 下" . 36) ("以 斯 拉 記" . 10) ("尼 希 米 記" . 13)
+    ("以 斯 帖 記" . 10) ("約 伯 記" . 42) ("詩 篇" . 150) ("箴 言" . 31)
+    ("傳 道 書" . 12) ("雅 歌" . 8) ("以 賽 亞 書" . 66) ("耶 利 米 書" . 52)
+    ("耶 利 米 哀 歌" . 5) ("以 西 結 書" . 48) ("但 以 理 書" . 12) ("何 西 阿 書" . 14)
+    ("約 珥 書" . 3) ("阿 摩 司 書" . 9) ("俄 巴 底 亞 書" . 1) ("約 拿 書" . 4)
+    ("彌 迦 書" . 7) ("那 鴻 書" . 3) ("哈 巴 谷 書" . 3) ("西 番 雅 書" . 3)
+    ("哈 該 書" . 2) ("撒 迦 利 亞" . 14) ("瑪 拉 基 書" . 4) ("馬 太 福 音" . 28)
+    ("馬 可 福 音" . 16) ("路 加 福 音" . 24) ("約 翰 福 音" . 21) ("使 徒 行 傳" . 28)
+    ("羅 馬 書" . 16) ("歌 林 多 前 書" . 16) ("歌 林 多 後 書" . 13) ("加 拉 太 書" . 6)
+    ("以 弗 所 書" . 6) ("腓 立 比 書" . 4) ("歌 羅 西 書" . 4)
+    ("帖 撒 羅 尼 迦 前 書" . 5) ("帖 撒 羅 尼 迦 後 書" . 3) ("提 摩 太 前 書" . 6)
+    ("提 摩 太 後 書" . 4) ("提 多 書" . 3) ("腓 利 門 書" . 1) ("希 伯 來 書" . 13)
+    ("雅 各 書" . 5) ("彼 得 前 書" . 5) ("彼 得 後 書" . 3) ("約 翰 一 書" . 5)
+    ("約 翰 二 書" . 1) ("約 翰 三 書" . 1) ("猶 大 書" . 1) ("启 示 录" . 22))
+  "List of Bible books (CUV version) with their number of chapters.")
+
+(defconst bible-gateway-bible-books-cuvs
+  '(("創 世 記" . 50) ("出 埃 及 記" . 40) ("利 未 記" . 27) ("民 數 記" . 36)
+    ("申 命 記" . 34) ("約 書 亞 記" . 24) ("士 師 記" . 21) ("路 得 記" . 4)
+    ("撒 母 耳 記 上" . 31) ("撒 母 耳 記 下" . 24) ("列 王 紀 上" . 22) ("列 王 紀 下" . 25)
+    ("歷 代 志 上" . 29) ("歷 代 志 下" . 36) ("以 斯 拉 記" . 10) ("尼 希 米 記" . 13)
+    ("以 斯 帖 記" . 10) ("約 伯 記" . 42) ("詩 篇" . 150) ("箴 言" . 31)
+    ("傳 道 書" . 12) ("雅 歌" . 8) ("以 賽 亞 書" . 66) ("耶 利 米 書" . 52)
+    ("耶 利 米 哀 歌" . 5) ("以 西 結 書" . 48) ("但 以 理 書" . 12) ("何 西 阿 書" . 14)
+    ("約 珥 書" . 3) ("阿 摩 司 書" . 9) ("俄 巴 底 亞 書" . 1) ("約 拿 書" . 4) ("彌 迦 書" . 7)
+    ("那 鴻 書" . 3) ("哈 巴 谷 書" . 3) ("西 番 雅 書" . 3) ("哈 該 書" . 2)
+    ("撒 迦 利 亞" . 14) ("瑪 拉 基 書" . 4)  ("馬 太 福 音" . 28)
+    ("馬 可 福 音" . 16) ("路 加 福 音" . 24) ("約 翰 福 音" . 21) ("使 徒 行 傳" . 28)
+    ("羅 馬 書" . 16) ("歌 林 多 前 書" . 16) ("歌 林 多 後 書" . 13) ("加 拉 太 書" . 6)
+    ("以 弗 所 書" . 6) ("腓 立 比 書" . 4) ("歌 羅 西 書" . 4)
+    ("帖 撒 羅 尼 迦 前 書" . 5) ("帖 撒 羅 尼 迦 後 書" . 3) ("提 摩 太 前 書" . 6)
+    ("提 摩 太 後 書" . 4) ("提 多 書" . 3) ("腓 利 門 書" . 1) ("希 伯 來 書" . 13)
+    ("雅 各 書" . 5) ("彼 得 前 書" . 5) ("彼 得 後 書" . 3) ("約 翰 一 書" . 5)
+    ("約 翰 二 書" . 1) ("約 翰 三 書" . 1) ("猶 大 書" . 1) ("启 示 录" . 22))
+  "List of Bible books (CUVS version) with their number of chapters.")
+
 (defconst bible-gateway-version-names
   '(("KJV" . "King James Version")
     ("LSG" . "Louis Segond")
@@ -427,7 +467,9 @@ The query to BibleGateway is still sent using the localized book name."
     ("DN1933" . "Dette er Biblen på dansk")
     ("R1933" . "Raamattu 1933/38")
     ("KAR" . "Hungarian Károli")
-    ("VULGATE" . "Biblia Sacra Vulgata"))
+    ("VULGATE" . "Biblia Sacra Vulgata")
+    ("CUV" . "Chinese Union Version (Traditional)")
+    ("CUVS" . "Chinese Union Version (Simplified)"))
   "Mapping of Bible version codes to their full names.")
 
 (defun bible-gateway--version-books ()
@@ -447,6 +489,8 @@ The query to BibleGateway is still sent using the localized book name."
     ("R1933"    bible-gateway-bible-books-r1933)
     ("KAR"      bible-gateway-bible-books-kar)
     ("VULGATE"  bible-gateway-bible-books-vulgate)
+    ("CUV"      bible-gateway-bible-books-cuv)
+    ("CUVS"     bible-gateway-bible-books-cuvs)
     (_          bible-gateway-bible-books-kjv)))
 
 (defun bible-gateway--localize-book (display-name)
@@ -2007,7 +2051,7 @@ Used to mark the day done only once the user reaches the last verse.")
   (let* ((today (format-time-string "%Y-%m-%d"))
          (done (bible-gateway--plan-done-p today)))
     (propertize
-     "[♰]"
+     "(†)"
      'face (if done
 	       'bible-gateway-modeline-done-face
 	     'bible-gateway-modeline-pending-face)
