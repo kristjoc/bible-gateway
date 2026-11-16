@@ -6,7 +6,7 @@
 ;; Keywords: convenience comm hypermedia
 ;; Homepage: https://github.com/kristjoc/bible-gateway
 ;; Package-Requires: ((emacs "29.1"))
-;; Package-Version: 1.7.3
+;; Package-Version: 1.7.4
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -1933,6 +1933,20 @@ DATE is a string in YYYY-MM-DD form.  Returns nil if not found."
   "Split PASSAGE \"Gen 1; Mat 1; Ezr 1\" into a list of trimmed references."
   (mapcar #'string-trim (split-string passage ";" t)))
 
+(defun bible-gateway--expand-chapter-range (ref)
+  "Expand REF such as \"Ezek 3-4\" into (\"Ezek 3\" \"Ezek 4\").
+Return (REF) unchanged unless REF is a whole-chapter range."
+  (let ((parsed (bible-gateway--parse-reference ref)))
+    (if (and parsed
+             (string-match "\\`\\([0-9]+\\)-\\([0-9]+\\)\\'" (cdr parsed))
+             (<= (string-to-number (match-string 1 (cdr parsed)))
+                 (string-to-number (match-string 2 (cdr parsed)))))
+        (let ((from (string-to-number (match-string 1 (cdr parsed))))
+              (to (string-to-number (match-string 2 (cdr parsed)))))
+          (mapcar (lambda (n) (format "%s %d" (car parsed) n))
+                  (number-sequence from to)))
+      (list ref))))
+
 (defun bible-gateway--parse-reference (ref)
   "Parse REF into a (BOOK . PASSAGE) cons.
 
@@ -1951,7 +1965,8 @@ the book.  Returns nil if REF cannot be parsed."
 
 (defun bible-gateway--render-plan-day (date passage)
   "Render PASSAGE (semicolon-separated refs) for DATE in the passage buffer."
-  (let ((references (bible-gateway--split-references passage))
+  (let ((references (mapcan #'bible-gateway--expand-chapter-range
+                            (bible-gateway--split-references passage)))
         (buf (get-buffer-create bible-gateway-passage-buffer-name)))
     ;; Drop any existing highlight before erasing.
     (when (and bible-gateway-passage--highlight-overlay
