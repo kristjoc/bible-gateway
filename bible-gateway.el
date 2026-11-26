@@ -395,11 +395,10 @@ The query to BibleGateway is still sent using the localized book name."
     ("Deuteronomium" . 34) ("Iosue" . 24) ("Iudicum" . 21) ("Ruth" . 4)
     ("I Samuelis" . 31) ("II Samuelis" . 24) ("I Regum" . 22) ("II Regum" . 25)
     ("I Paralipomenon" . 29) ("II Paralipomenon" . 36) ("Esdrae" . 10)
-    ("Nehemiae" . 13) ("Tobiae" . 14) ("Iudith" . 16) ("Esther" . 16)
-    ("I Machabaeorum" . 16) ("II Machabaeorum" . 15) ("Iob" . 42)
+    ("Nehemiae" . 13) ("Esther" . 16) ("Iob" . 42)
     ("Psalmi" . 150) ("Proverbia" . 31) ("Ecclesiastes" . 12)
-    ("Canticum Canticorum" . 8) ("Sapientia" . 19) ("Ecclesiasticus" . 51)
-    ("Isaias" . 66) ("Ieremias" . 52) ("Lamentationes" . 5) ("Baruch" . 6)
+    ("Canticum Canticorum" . 8)
+    ("Isaias" . 66) ("Ieremias" . 52) ("Lamentationes" . 5)
     ("Ezechiel" . 48) ("Daniel" . 14) ("Osee" . 14) ("Ioel" . 3) ("Amos" . 9)
     ("Abdias" . 1) ("Ionas" . 4) ("Michaeas" . 7) ("Nahum" . 3) ("Habacuc" . 3)
     ("Sophonias" . 3) ("Aggaeus" . 2) ("Zacharias" . 14) ("Malachias" . 4)
@@ -410,8 +409,13 @@ The query to BibleGateway is still sent using the localized book name."
     ("I Timotheum" . 6) ("II Timotheum" . 4) ("Titum" . 3) ("Philemonem" . 1)
     ("Hebraeos" . 13) ("Iacobi" . 5) ("I Petri" . 5) ("II Petri" . 3)
     ("I Ioannis" . 5) ("II Ioannis" . 1) ("III Ioannis" . 1) ("Iudae" . 1)
-    ("Apocalypsis" . 22))
-  "List of Bible books (VULGATE version) with their number of chapters.")
+    ("Apocalypsis" . 22)
+    ;; Deuterocanonical / apocryphal books
+    ("Tobiae" . 14) ("Iudith" . 16) ("I Machabaeorum" . 16)
+    ("II Machabaeorum" . 15) ("Sapientia" . 19) ("Ecclesiasticus" . 51)
+    ("Baruch" . 6))
+  "List of Bible books (VULGATE version) with their number of chapters.
+Apocryphal books added after the Revelation and kept here for historical reasons.")
 
 (defconst bible-gateway-bible-books-cuv
   '(("創世記" . 50) ("出埃及記" . 40) ("利未記" . 27) ("民數記" . 36)
